@@ -1,6 +1,8 @@
 #Authors: Noboru Nakamura and Giorgio M. Sarro
 
-#Build the matrix that solves the linearized PV equation for a perturbation in the form of perturbations in the form A2(y)e^(i(kx-ct)) and A1(y)e^(i(kx-ct))
+#Here we build the matrix that solves the linearized PV equation for a perturbation in the form of perturbations in the form A2(y)e^(i(kx-ct)) and A1(y)e^(i(kx-ct)).
+#We obtain a generalized eigenvalue problem of the form: Mv = cMv
+
 import numpy as np
 def build_matrices(u1, u2, beta, dy, n_2, rk, half_maxtrix, n):
     M = np.zeros((n_2-4,n_2-4))

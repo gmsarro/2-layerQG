@@ -1,5 +1,5 @@
 ### This code computes the eddy growth rate and its mode structure for a 2-layer QG model. ####
-#Computes the fastest eddy growth rates in a 2-layer QG model.
+#Computes the fastest and mean eddy growth rates in a 2-layer QG model.
 #This is a modified version of the Phillips model.
 #Written by Giorgio M. Sarro and Noboru Nakamura
 
@@ -41,6 +41,7 @@ n_2= int(len(y)*2)
 n= int(len(y))
 half_maxtrix = n-2
 growth = np.zeros(resolution)
+mean_growth = np.zeros(resolution)
 kk = np.zeros(resolution)
 loc= 0
 
@@ -52,6 +53,7 @@ for rk in range_k:
     evals, V = eig(M, N)
     gr = evals.imag*rk
     growth[loc] = np.max(gr)
+    mean_growth[loc] = np.mean(np.abs(gr))  
     kk[loc] = rk
     print('wavenumber ',rk,' of ', max_wavenumber)
     loc += 1
@@ -86,6 +88,7 @@ with nc.Dataset(output_file, 'w', format='NETCDF4_CLASSIC') as nc_file:
     nc_file.createVariable('k', 'f8', ('k_dim',))
     nc_file.createVariable('y', 'f8', ('y_dim',))
     nc_file.createVariable('largest_imaginary_eigenvalues', 'f8', ('k_dim',))
+    nc_file.createVariable('mean_imaginary_eigenvalues', 'f8', ('k_dim',))
     nc_file.createVariable('optimal_mode_upper_img', 'f8', ('y_dim', ))
     nc_file.createVariable('optimal_mode_lower_img', 'f8', ('y_dim', ))
     nc_file.createVariable('optimal_mode_upper_real', 'f8', ('y_dim', ))
@@ -95,6 +98,7 @@ with nc.Dataset(output_file, 'w', format='NETCDF4_CLASSIC') as nc_file:
     nc_file['k'][:] = kk
     nc_file['y'][:] = y
     nc_file['largest_imaginary_eigenvalues'][:] = growth
+    nc_file['mean_imaginary_eigenvalues'][:] = mean_growth
     nc_file['optimal_mode_upper_img'][:] = peak_mode_structure_upper_img
     nc_file['optimal_mode_lower_img'][:] = peak_mode_structure_lower_img
     nc_file['optimal_mode_upper_real'][:] = peak_mode_structure_upper_real

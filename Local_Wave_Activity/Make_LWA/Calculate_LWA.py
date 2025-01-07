@@ -1,4 +1,4 @@
-# 1) Removes the data from the sponnge layer
+# 1) Removes the data from the sponge layer
 # 2) Calculates the reference PV in Fortran 
 # 3) Calculates the cyclonic and anticyclonic LWA in Fortran
 
