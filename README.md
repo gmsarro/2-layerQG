@@ -22,7 +22,7 @@ These scripts are primarily designed for the [Lutsko and Hell (2021) model](http
 
 ### 1. Local Wave Activity and Budget Calculation
 
-This section includes scripts for calculating the local wave activity (LWA) and its budget within a 2-layer quasi-geostrophic (QG) model, considering latent heating effects. These scripts correspond to the results presented in Section 2.2 of Sarro et al. (2024).
+This section includes scripts for calculating the local wave activity (LWA) and its budget within a 2-layer quasi-geostrophic (QG) model, considering latent heating effects. These scripts correspond to the results presented in "The Local Wave Activity Budget in the 2-Layer Model" of Sarro et al. (2025).
 
 **Subdirectories:**
 
@@ -41,7 +41,7 @@ To compute the LWA budget, execute the scripts in the following order:
 
 ### 2. Eddy Growth Rates Calculation
 
-This section includes scripts for calculating eddy growth rates for the 2-layer QG model. The script also computes the spatial structure of the waves in the most unstable mode. These scripts correspond to the analysis discussed in Section 2.6 of Sarro et al. (2024).
+This section includes scripts for calculating eddy growth rates for the 2-layer QG model, only using dry and by including moisture assuming saturation and a temperature-dependent saturation. The script also computes the spatial structure of the waves in the most unstable mode. These scripts correspond to the analysis discussed in "Fastest Growth Rate Calculations" section of Sarro et al. (2025).
 
 ## Contact Information
 
