@@ -1,6 +1,6 @@
 # Compute Local Wave Activity and the eddy growth rate in 2-Layer QG Models
 
-This repository contains scripts associated with the methods section of Sarro et al. (2024). The scripts are organized into two main categories:
+This repository contains scripts associated with the methods section of Sarro et al. (2025). The scripts are organized into two main categories:
 
 1. **Local Wave Activity and Budget Calculation for a 2-Layer QG Model (with Latent Heating)**
 2. **Eddy Growth Rates Calculation for a 2-Layer QG Model**
