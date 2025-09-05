@@ -53,7 +53,7 @@ python eddy_growth/dry_eddy_growth/calculate_eddy_growth.py \
 ## Repository Structure
 
 ```plaintext
-2-LayerQG/
+2-layerQG/
 ├── local_wave_activity/
 │   ├── make_lwa/              # Scripts for local wave activity calculation and reference PV
 │   ├── make_lwa_budget/       # Scripts for reference wind, reference temperature, and LWA budget calculation
@@ -118,11 +118,11 @@ This section includes scripts for calculating the local wave activity (LWA) and 
 
 To compute the LWA budget, execute the scripts in the following order:
 
-1. `2-LayerQG/local_wave_activity/make_lwa/calculate_lwa.py`
-2. `2-LayerQG/local_wave_activity/make_lwa_budget/uref_make.py`
-3. `2-LayerQG/local_wave_activity/make_lwa_budget/lp_budget_make.py` 
+1. `2-layerQG/local_wave_activity/make_lwa/calculate_lwa.py`
+2. `2-layerQG/local_wave_activity/make_lwa_budget/uref_make.py`
+3. `2-layerQG/local_wave_activity/make_lwa_budget/lp_budget_make.py` 
    -or- 
-   `2-LayerQG/local_wave_activity/make_lwa_budget/lwa_budget_make.py`
+   `2-layerQG/local_wave_activity/make_lwa_budget/lwa_budget_make.py`
 
 ### 2. Eddy Growth Rates Calculation
 
