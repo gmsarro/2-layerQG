@@ -103,11 +103,6 @@ export NC_LIB="-L/usr/local/lib -lnetcdff -lnetcdf"
 - Use the three-step LWA workflow above in order to reproduce LWA budgets.
 - The dry eddy growth script reproduces growth-rate spectra and mode structures; provide the model `u1`, `u2`, `y` fields in the input file.
 
-## Development & Tooling
-- Type checking: `mypy .`
-- Logging: defaults to `INFO`; increase with environment `PYTHONLOGGING` or adjust `basicConfig` in CLIs.
-- Code style: type-annotated, no `print`, lower-case function and directory names.
-
 ## Scripts Overview
 
 ### 1. Local Wave Activity and Budget Calculation
