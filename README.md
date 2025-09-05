@@ -49,6 +49,11 @@ python eddy_growth/dry_eddy_growth/calculate_eddy_growth.py \
   --data-path /path/to/model.nc \
   --output-file /path/to/results.nc
 ```
+### Run: Eddy growth (moist)
+```python
+from moist_growth_matrix import moist_matrix
+kk, growth, q1p, q2p, P = moist_matrix(L=0.2, U1=1.0, U2=0.5)
+``` 
 
 ## Repository Structure
 
@@ -59,6 +64,8 @@ python eddy_growth/dry_eddy_growth/calculate_eddy_growth.py \
 │   ├── make_lwa_budget/       # Scripts for reference wind, reference temperature, and LWA budget calculation
 │
 └── eddy_growth/               # Scripts for eddy growth rates calculation
+│   ├── dry_eddy_growth/             
+│   ├── moist_eddy_growth/      
 ```
 
 ## Data Requirements
