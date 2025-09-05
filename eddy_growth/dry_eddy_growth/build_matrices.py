@@ -1,12 +1,43 @@
-#Authors: Noboru Nakamura and Giorgio M. Sarro
+"""
+Build coefficient matrices for the generalized eigenvalue problem of a 2-layer QG model.
 
-#Here we build the matrix that solves the linearized PV equation for a perturbation in the form of perturbations in the form A2(y)e^(i(kx-ct)) and A1(y)e^(i(kx-ct)).
-#We obtain a generalized eigenvalue problem of the form: Mv = cMv
+Typical usage example:
+
+    # Build matrices for given inputs
+    M, N = build_matrices(u1, u2, beta, dy, n_2, rk, half_matrix, n)
+"""
+
+from __future__ import annotations
 
 import numpy as np
-def build_matrices(u1, u2, beta, dy, n_2, rk, half_maxtrix, n):
-    M = np.zeros((n_2-4,n_2-4))
-    N = np.zeros((n_2-4,n_2-4))
+from numpy.typing import NDArray
+from typing import Tuple
+
+
+def build_matrices(
+    u1: NDArray[np.floating],
+    u2: NDArray[np.floating],
+    beta: float,
+    dy: float,
+    n_2: int,
+    rk: float,
+    half_maxtrix: int,
+    n: int,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Construct coefficient matrices M and N for the 2-layer QG eigenproblem.
+
+    :param u1: Upper-layer mean zonal wind array along meridional grid
+    :param u2: Lower-layer mean zonal wind array along meridional grid
+    :param beta: Planetary vorticity gradient (nondimensional)
+    :param dy: Meridional grid spacing
+    :param n_2: Total system size (2 * number_of_meridional_points)
+    :param rk: Zonal wavenumber (nondimensional)
+    :param half_maxtrix: Half matrix size (n - 2) used for block partitioning
+    :param n: Number of meridional grid points
+    :return: Tuple (M, N) of matrices for the generalized eigenvalue problem M v = c N v
+    """
+    M: NDArray[np.floating] = np.zeros((n_2-4, n_2-4))
+    N: NDArray[np.floating] = np.zeros((n_2-4, n_2-4))
     
     for j in range(n-4):
         M[j,j] = -u1[j+1]*(rk**2*dy**2+2.+dy**2)
