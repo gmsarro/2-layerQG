@@ -133,7 +133,7 @@ To compute the LWA budget, execute the scripts in the following order:
 
 ### 2. Eddy Growth Rates Calculation
 
-This section includes scripts for calculating eddy growth rates for the 2-layer QG model, only using dry and by including moisture assuming saturation and a temperature-dependent saturation. The script also computes the spatial structure of the waves in the most unstable mode. These scripts correspond to the analysis discussed in "Fastest Growth Rate Calculations" section of Sarro et al. (2025).
+This section includes scripts for calculating eddy growth rates for the 2-layer QG model, only using dry and by including moisture. The script also computes the spatial structure of the waves in the most unstable mode. These scripts correspond to the analysis discussed in "Fastest Growth Rate Calculations" section of Sarro et al. (2025).
 
 ## Contact Information
 
