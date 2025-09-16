@@ -9,7 +9,7 @@ python calculate_eddy_growth.py --data-path /path/to/model.nc --output-file /pat
 
 Bazel targets:
 ```bash
-bazel run //Eddy_Growth/dry_eddy_growth:calculate_eddy_growth -- \
+bazel run //eddy_growth/dry_eddy_growth:calculate_eddy_growth -- \
   --data-path /path/to/model.nc \
   --output-file /path/to/results.nc
 ``` 
