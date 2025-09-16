@@ -4,7 +4,7 @@ Compute eddy growth rates and mode structures by solving a generalized eigenvalu
 
 Typical usage example:
 ```bash
-python Calculate_Eddy_Growth.py --data-path /path/to/model.nc --output-file /path/to/results.nc
+python calculate_eddy_growth.py --data-path /path/to/model.nc --output-file /path/to/results.nc
 ```
 
 Bazel targets:
