@@ -11,11 +11,13 @@ python LP_budget_make.py --load-dir /path/to/data --save-dir /path/to/output
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Final
 
 import numpy as np
 from netCDF4 import Dataset
+
 from lwabudget import LH
 
 
@@ -52,8 +54,6 @@ def compute_lp(load_dir: Path, save_dir: Path) -> None:
 	LP = LH(pdat, qdat, Qref, L, dx, dy, filt=False)
 	_LOG.info('budget calculated')
 
-	import os
-	os.system('rm -f %s%s'%(savedir, sname))
 	write = Dataset(savedir+sname,'w')
 	write.createDimension('time', size=len(times))
 	write.createDimension('latitude', size=len(ys))
