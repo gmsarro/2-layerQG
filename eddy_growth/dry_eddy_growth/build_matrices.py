@@ -1,29 +1,26 @@
 """
 Build coefficient matrices for the generalized eigenvalue problem of a 2-layer QG model.
-
-Typical usage example:
-
-    # Build matrices for given inputs
-    M, N = build_matrices(u1, u2, beta, dy, n_2, rk, half_matrix, n)
 """
 
 from __future__ import annotations
 
-import numpy as np
-from numpy.typing import NDArray
 from typing import Tuple
+
+import numpy as np
+import numpy.typing
 
 
 def build_matrices(
-    u1: NDArray[np.floating],
-    u2: NDArray[np.floating],
+    *,
+    u1: numpy.typing.NDArray[np.floating],
+    u2: numpy.typing.NDArray[np.floating],
     beta: float,
     dy: float,
     n_2: int,
     rk: float,
     half_maxtrix: int,
     n: int,
-) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+) -> Tuple[numpy.typing.NDArray[np.floating], numpy.typing.NDArray[np.floating]]:
     """Construct coefficient matrices M and N for the 2-layer QG eigenproblem.
 
     :param u1: Upper-layer mean zonal wind array along meridional grid
@@ -36,8 +33,8 @@ def build_matrices(
     :param n: Number of meridional grid points
     :return: Tuple (M, N) of matrices for the generalized eigenvalue problem M v = c N v
     """
-    M: NDArray[np.floating] = np.zeros((n_2-4, n_2-4))
-    N: NDArray[np.floating] = np.zeros((n_2-4, n_2-4))
+    M: numpy.typing.NDArray[np.floating] = np.zeros((n_2-4, n_2-4))
+    N: numpy.typing.NDArray[np.floating] = np.zeros((n_2-4, n_2-4))
     
     for j in range(n-4):
         M[j,j] = -u1[j+1]*(rk**2*dy**2+2.+dy**2)

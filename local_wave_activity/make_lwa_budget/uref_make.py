@@ -1,11 +1,5 @@
 """
 Calculate U_REF and T_REF from Q_REF; all variables are nondimensionalized.
-
-Typical usage example:
-
-```bash
-python uref_make.py --data-dir /path/to/data --save-dir /path/to/output
-```
 """
 
 from __future__ import annotations
@@ -16,13 +10,16 @@ from pathlib import Path
 from typing import Final
 
 import numpy as np
-from netCDF4 import Dataset
+import netCDF4
+import typer
+from typing_extensions import Annotated
 
 
 _LOG = logging.getLogger(__name__)
 
 
 def solve_uref(
+	*,
 	qref: np.ndarray,
 	um: np.ndarray,
 	umb: np.ndarray,
@@ -72,6 +69,7 @@ def solve_uref(
 
 
 def integrate_tref(
+	*,
 	uref: np.ndarray,
 	ym: np.ndarray,
 	tm: np.ndarray,
@@ -96,6 +94,7 @@ def integrate_tref(
 
 
 def compute_and_save(
+	*,
 	data_dir: Path,
 	save_dir: Path,
 	Llist: np.ndarray,
@@ -108,54 +107,51 @@ def compute_and_save(
 	sname_u = 'N128_%s_2.0_0.1_%s.uref1_2.nc' % (str(np.round(Llist[0],2)), str(np.round(Ulist[0],2)))
 	sname_t = 'N128_%s_2.0_0.1_%s.tref1_2.nc' % (str(np.round(Llist[0],2)), str(np.round(Ulist[0],2)))
 
-	readq = Dataset(data_dir_s+'N128_%s_2.0_0.1_%s.qref1_2.nc' % (str(np.round(Llist[0],2)), str(np.round(Ulist[0],2))))
-	qref = readq.variables['qref1'][:,:].data
-	tn, yn = np.shape(qref)
-	readu = Dataset(data_dir_s+'N128_%s_2.0_0.1_%s.nc' % (str(np.round(Llist[0],2)), str(np.round(Ulist[0],2))))
-	um = readu.variables['zu1'][:,:].data
-	umb = readu.variables['zu2'][:,:].data
-	tm = readu.variables['ztau'][:,:].data
-	ys = readu.variables['y'][:].data
-	readq.close()
-	readu.close()
+	with netCDF4.Dataset(data_dir_s+'N128_%s_2.0_0.1_%s.qref1_2.nc' % (str(np.round(Llist[0],2)), str(np.round(Ulist[0],2)))) as readq:
+		qref = readq.variables['qref1'][:,:].data
+		tn, yn = np.shape(qref)
+	with netCDF4.Dataset(data_dir_s+'N128_%s_2.0_0.1_%s.nc' % (str(np.round(Llist[0],2)), str(np.round(Ulist[0],2)))) as readu:
+		um = readu.variables['zu1'][:,:].data
+		umb = readu.variables['zu2'][:,:].data
+		tm = readu.variables['ztau'][:,:].data
+		ys = readu.variables['y'][:].data
 
-	uref = solve_uref(qref, um, umb, ys, beta=beta, Ld=Ld)
-	tref = integrate_tref(uref, ys, tm)
+	uref = solve_uref(qref=qref, um=um, umb=umb, ys=ys, beta=beta, Ld=Ld)
+	tref = integrate_tref(uref=uref, ym=ys, tm=tm)
 
 	os.system('rm -f %s' % (save_dir_s + sname_u))
-	write = Dataset(save_dir_s + sname_u,'w')
-	write.createDimension('time', size=tn)
-	write.createDimension('latitude', size=yn)
-	var_u = write.createVariable('uref1','f4', dimensions=['time','latitude'])
-	time = write.createVariable('time','f4', dimensions=['time'])
-	latitude = write.createVariable('y','f4', dimensions=['latitude'])
-	var_u[:,:] = uref[:,:]
-	latitude[:] = ys[:]
-	time[:] = np.arange(tn)
-	write.close()
+	with netCDF4.Dataset(save_dir_s + sname_u,'w') as write:
+		write.createDimension('time', size=tn)
+		write.createDimension('latitude', size=yn)
+		var_u = write.createVariable('uref1','f4', dimensions=['time','latitude'])
+		time = write.createVariable('time','f4', dimensions=['time'])
+		latitude = write.createVariable('y','f4', dimensions=['latitude'])
+		var_u[:,:] = uref[:,:]
+		latitude[:] = ys[:]
+		time[:] = np.arange(tn)
 	_LOG.info('Saved %s', save_dir_s + sname_u)
 
 	os.system('rm -f %s' % (save_dir_s + sname_t))
-	write = Dataset(save_dir_s + sname_t,'w')
-	write.createDimension('time', size=tn)
-	write.createDimension('latitude', size=yn)
-	var_t = write.createVariable('tref1','f4', dimensions=['time','latitude'])
-	time = write.createVariable('time','f4', dimensions=['time'])
-	latitude = write.createVariable('y','f4', dimensions=['latitude'])
-	var_t[:,:] = tref[:,:]
-	latitude[:] = ys[:]
-	time[:] = np.arange(tn)
-	write.close()
+	with netCDF4.Dataset(save_dir_s + sname_t,'w') as write:
+		write.createDimension('time', size=tn)
+		write.createDimension('latitude', size=yn)
+		var_t = write.createVariable('tref1','f4', dimensions=['time','latitude'])
+		time = write.createVariable('time','f4', dimensions=['time'])
+		latitude = write.createVariable('y','f4', dimensions=['latitude'])
+		var_t[:,:] = tref[:,:]
+		latitude[:] = ys[:]
+		time[:] = np.arange(tn)
 	_LOG.info('Saved %s', save_dir_s + sname_t)
 
 
 def cli(
-	data_dir: Path,
-	save_dir: Path,
-	beta: float = 0.2,
-	Ld: float = 1.0,
+	*,
+	data_dir: Annotated[Path, typer.Option(help='Input directory containing qref and mean fields')],
+	save_dir: Annotated[Path, typer.Option(help='Output directory')],
+	beta: Annotated[float, typer.Option(help='Nondimensional beta')] = 0.2,
+	Ld: Annotated[float, typer.Option(help='Deformation radius')] = 1.0,
 ) -> None:
-	"""CLI entry point for computing and saving U_REF and T_REF."""
+	print('Computing U_REF and T_REF...')
 	logging.basicConfig(
 		level=logging.INFO,
 		format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -163,16 +159,10 @@ def cli(
 	)
 	Llist = np.arange(0.0)
 	Ulist = np.array([1.0], dtype=float)
-	compute_and_save(data_dir, save_dir, Llist, Ulist, beta, Ld)
+	compute_and_save(data_dir=data_dir, save_dir=save_dir, Llist=Llist, Ulist=Ulist, beta=beta, Ld=Ld)
+	print('Done.')
 
 
 if __name__ == '__main__':
-	import argparse
-	parser = argparse.ArgumentParser(description='Compute U_REF and T_REF from Q_REF')
-	parser.add_argument('--data-dir', type=Path, required=True, help='Input directory containing qref and mean fields')
-	parser.add_argument('--save-dir', type=Path, required=True, help='Output directory')
-	parser.add_argument('--beta', type=float, default=0.2, help='Nondimensional beta')
-	parser.add_argument('--Ld', type=float, default=1.0, help='Deformation radius')
-	args = parser.parse_args()
-	cli(args.data_dir, args.save_dir, args.beta, args.Ld)
+	typer.run(cli)
 

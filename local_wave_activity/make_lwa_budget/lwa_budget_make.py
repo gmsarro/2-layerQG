@@ -1,11 +1,5 @@
 """
 Compute all terms of the LWA budget (excluding latent heating contribution) and save to NetCDF.
-
-Typical usage example:
-
-```python
-python LWA_budget_make.py --load-dir /path/to/data --save-dir /path/to/output
-```
 """
 
 from __future__ import annotations
@@ -15,14 +9,25 @@ from pathlib import Path
 from typing import Final
 
 import numpy as np
-from netCDF4 import Dataset
+import netCDF4
+import typer
+from typing_extensions import Annotated
 from lwabudget import lwatend, urefadv, ueadv, eddyflux_x, eddyflux_y, eddyflux_z, eddyflux
 
 
 _LOG = logging.getLogger(__name__)
 
 
-def compute_budget(load_dir: Path, save_dir: Path) -> None:
+def compute_budget(
+    *,
+    load_dir: Path,
+    save_dir: Path,
+) -> None:
+	logging.basicConfig(
+		level=logging.INFO,
+		format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+		datefmt='%Y-%m-%d %H:%M:%S',
+	)
 	loaddir = str(load_dir) if str(load_dir).endswith('/') else str(load_dir) + '/'
 	savedir = str(save_dir) if str(save_dir).endswith('/') else str(save_dir) + '/'
 
@@ -33,30 +38,24 @@ def compute_budget(load_dir: Path, save_dir: Path) -> None:
 
 	sname = 'LH1_%s_2.0_0.1_%s.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))
 
-	read = Dataset(loaddir+'N128_%s_2.0_0.1_%s.3d.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2))))
-	qdat = read.variables['q1'][:,:,:].data
-	vdat = read.variables['v1'][:,:,:].data
-	udat = read.variables['u1'][:,:,:].data
-	tdat = read.variables['tau'][:,:,:].data
-	xs = read.variables['x'][:].data
-	ys = read.variables['y'][:].data
-	read.close()
+	with netCDF4.Dataset(loaddir+'N128_%s_2.0_0.1_%s.3d.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))) as read:
+		qdat = read.variables['q1'][:,:,:].data
+		vdat = read.variables['v1'][:,:,:].data
+		udat = read.variables['u1'][:,:,:].data
+		tdat = read.variables['tau'][:,:,:].data
+		xs = read.variables['x'][:].data
+		ys = read.variables['y'][:].data
 
-	read = Dataset(loaddir+'N128_%s_2.0_0.1_%s.qref1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2))))
-	Qref = read.variables['qref1'][:,:].data
-	read.close()
-	read = Dataset(loaddir+'N128_%s_2.0_0.1_%s.uref1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2))))
-	Uref = read.variables['uref1'][:,:].data
-	read.close()
-	read = Dataset(loaddir+'N128_%s_2.0_0.1_%s.tref1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2))))
-	Tref = read.variables['tref1'][:,:].data
-	read.close()
-	read = Dataset(loaddir+'N128_%s_2.0_0.1_%s.wac1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2))))
-	LWAC = read.variables['wac1'][:,:,:].data
-	read.close()
-	read = Dataset(loaddir+'N128_%s_2.0_0.1_%s.waa1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2))))
-	LWAA = read.variables['waa1'][:,:,:].data
-	read.close()
+	with netCDF4.Dataset(loaddir+'N128_%s_2.0_0.1_%s.qref1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))) as read:
+		Qref = read.variables['qref1'][:,:].data
+	with netCDF4.Dataset(loaddir+'N128_%s_2.0_0.1_%s.uref1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))) as read:
+		Uref = read.variables['uref1'][:,:].data
+	with netCDF4.Dataset(loaddir+'N128_%s_2.0_0.1_%s.tref1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))) as read:
+		Tref = read.variables['tref1'][:,:].data
+	with netCDF4.Dataset(loaddir+'N128_%s_2.0_0.1_%s.wac1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))) as read:
+		LWAC = read.variables['wac1'][:,:,:].data
+	with netCDF4.Dataset(loaddir+'N128_%s_2.0_0.1_%s.waa1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))) as read:
+		LWAA = read.variables['waa1'][:,:,:].data
 	LWA = LWAA[:,:,:] + LWAC[:,:,:]
 	_LOG.info('variables loaded')
 
@@ -71,13 +70,13 @@ def compute_budget(load_dir: Path, save_dir: Path) -> None:
 	dx = xs[1]-xs[0]
 	dy = ys[1]-ys[0]
 
-	LWAtend = lwatend(LWA, dt)
-	Urefadv = urefadv(LWA, Uref, dx, filt=False)
-	ueqeadv = ueadv(qdat, Qref, udat, Uref, dx, dy, filt=False)
-	EF_x = eddyflux_x(ue, ve, dx, filt=False)
-	EF_y = eddyflux_y(ue, ve, dy, filt=False)
-	EF_z = eddyflux_z(ve, te, Ld, filt=False)
-	EF = eddyflux(ve, qe, filt=False)
+	LWAtend = lwatend(lwa=LWA, dt=dt)
+	Urefadv = urefadv(lwa=LWA, uref=Uref, dx=dx, filt=False)
+	ueqeadv = ueadv(q=qdat, qref=Qref, u=udat, uref=Uref, dx=dx, dy=dy, filt=False)
+	EF_x = eddyflux_x(ue=ue, ve=ve, dx=dx, filt=False)
+	EF_y = eddyflux_y(ue=ue, ve=ve, dy=dy, filt=False)
+	EF_z = eddyflux_z(ve=ve, te=te, Ld=Ld, filt=False)
+	EF = eddyflux(ve=ve, qe=qe, filt=False)
 
 	RHS = Urefadv + ueqeadv + EF_x + EF_y + EF_z
 	RES = LWAtend - RHS
@@ -87,52 +86,47 @@ def compute_budget(load_dir: Path, save_dir: Path) -> None:
 	import os
 	os_system_rm: str = 'rm -f %s%s'%(savedir, sname)
 	os.system(os_system_rm)
-	write = Dataset(savedir+sname,'w')
-	write.createDimension('time', size=len(times))
-	write.createDimension('latitude', size=len(ys))
-	write.createDimension('longitude', size=len(xs))
+	with netCDF4.Dataset(savedir+sname,'w') as write:
+		write.createDimension('time', size=len(times))
+		write.createDimension('latitude', size=len(ys))
+		write.createDimension('longitude', size=len(xs))
 
-	time = write.createVariable('time','f4',dimensions=['time'])
-	latitude = write.createVariable('latitude','f4',dimensions=['latitude'])
-	longitude = write.createVariable('longitude','f4',dimensions=['longitude'])
+		time = write.createVariable('time','f4',dimensions=['time'])
+		latitude = write.createVariable('latitude','f4',dimensions=['latitude'])
+		longitude = write.createVariable('longitude','f4',dimensions=['longitude'])
 
-	term1 = write.createVariable('lwatend','f4',dimensions=['time','latitude','longitude'])
-	term2 = write.createVariable('urefadv','f4',dimensions=['time','latitude','longitude'])
-	term3 = write.createVariable('ueqeadv','f4',dimensions=['time','latitude','longitude'])
-	term4 = write.createVariable('ef_x','f4',dimensions=['time','latitude','longitude'])
-	term5 = write.createVariable('ef_y','f4',dimensions=['time','latitude','longitude'])
-	term6 = write.createVariable('ef_z','f4',dimensions=['time','latitude','longitude'])
-	term7 = write.createVariable('res','f4',dimensions=['time','latitude','longitude'])
+		term1 = write.createVariable('lwatend','f4',dimensions=['time','latitude','longitude'])
+		term2 = write.createVariable('urefadv','f4',dimensions=['time','latitude','longitude'])
+		term3 = write.createVariable('ueqeadv','f4',dimensions=['time','latitude','longitude'])
+		term4 = write.createVariable('ef_x','f4',dimensions=['time','latitude','longitude'])
+		term5 = write.createVariable('ef_y','f4',dimensions=['time','latitude','longitude'])
+		term6 = write.createVariable('ef_z','f4',dimensions=['time','latitude','longitude'])
+		term7 = write.createVariable('res','f4',dimensions=['time','latitude','longitude'])
 
-	longitude[:]=xs[:]
-	latitude[:]=ys[:]
-	time[:]=times
+		longitude[:]=xs[:]
+		latitude[:]=ys[:]
+		time[:]=times
 
-	term1[:,:,:]=LWAtend[:,:,:]
-	term2[:,:,:]=Urefadv[:,:,:]
-	term3[:,:,:]=ueqeadv[:,:,:]
-	term4[:,:,:]=EF_x[:,:,:]
-	term5[:,:,:]=EF_y[:,:,:]
-	term6[:,:,:]=EF_z[:,:,:]
-	term7[:,:,:]=RES[:,:,:]
+		term1[:,:,:]=LWAtend[:,:,:]
+		term2[:,:,:]=Urefadv[:,:,:]
+		term3[:,:,:]=ueqeadv[:,:,:]
+		term4[:,:,:]=EF_x[:,:,:]
+		term5[:,:,:]=EF_y[:,:,:]
+		term6[:,:,:]=EF_z[:,:,:]
+		term7[:,:,:]=RES[:,:,:]
 
-	write.close()
 	_LOG.info('output saved; done')
 
 
-def cli(load_dir: Path, save_dir: Path) -> None:
-	logging.basicConfig(
-		level=logging.INFO,
-		format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-		datefmt='%Y-%m-%d %H:%M:%S',
-	)
-	compute_budget(load_dir, save_dir)
+def cli(
+    *,
+    load_dir: Annotated[Path, typer.Option(help='Directory containing input NetCDF files')],
+    save_dir: Annotated[Path, typer.Option(help='Directory to save output NetCDF files')],
+) -> None:
+	print('Computing LWA budget terms...')
+	compute_budget(load_dir=load_dir, save_dir=save_dir)
+	print('Done.')
 
 
 if __name__ == '__main__':
-	import argparse
-	parser = argparse.ArgumentParser(description='Compute LWA budget terms')
-	parser.add_argument('--load-dir', type=Path, required=True)
-	parser.add_argument('--save-dir', type=Path, required=True)
-	args = parser.parse_args()
-	cli(args.load_dir, args.save_dir)
+	typer.run(cli)
