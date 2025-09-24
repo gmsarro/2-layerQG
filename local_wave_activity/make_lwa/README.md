@@ -2,6 +2,15 @@
 
 Preprocess PV to remove sponge, then compile and run Fortran codes to compute reference PV and (anti)cyclonic LWA.
 
+## Bazel
+```
+bazel run //local_wave_activity/make_lwa:calculate_lwa -- \
+  --input-nc=/path/to/N128_L_C_E_U.3d.nc \
+  --work-dir=/path/to/fortran_workspace \
+  --output-prefix=/path/to/output/N128_L_C_E_U.
+```
+
+## Python
 Usage:
 ```bash
 python calculate_lwa.py \
