@@ -1,20 +1,15 @@
-"""
-Compute the latent heating contribution of the LWA budget and save to NetCDF.
-"""
-
-from __future__ import annotations
+"""Compute the latent heating contribution of the LWA budget and save to NetCDF."""
 
 import logging
-import os
-from pathlib import Path
-from typing import Final
+import pathlib
+import typing
 
-import numpy as np
 import netCDF4
+import numpy as np
 import typer
-from typing_extensions import Annotated
 
-from lwabudget import LH
+import array_utils
+import lwabudget
 
 
 _LOG = logging.getLogger(__name__)
@@ -22,69 +17,82 @@ _LOG = logging.getLogger(__name__)
 
 def compute_lp(
     *,
-    load_dir: Path,
-    save_dir: Path,
+    data_dir: pathlib.Path,
+    output_directory: pathlib.Path,
+    base_name: str,
+    latent_heating: float,
+    max_time: int,
 ) -> None:
-	logging.basicConfig(
-		level=logging.INFO,
-		format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-		datefmt='%Y-%m-%d %H:%M:%S',
-	)
-	loaddir = str(load_dir) if str(load_dir).endswith('/') else str(load_dir) + '/'
-	savedir = str(save_dir) if str(save_dir).endswith('/') else str(save_dir) + '/'
+    """Compute the latent heating LWA budget term and save to NetCDF."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+    )
 
-	Llist = np.arange(0.0)
-	Ulist = np.array([1.0], dtype=float)
-	max_lenghth: Final[int] = 10000
+    with netCDF4.Dataset(str(data_dir / (base_name + '.3d.nc'))) as ds:
+        qdat = ds.variables['q1'][:, :, :].data
+        pdat = ds.variables['P'][:, :, :].data
+        xs = ds.variables['x'][:].data
+        ys = ds.variables['y'][:].data
 
-	sname = 'LP_%s_2.0_0.1_%s.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))
-	with netCDF4.Dataset(loaddir+'N128_%s_2.0_0.1_%s.3d.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))) as read:
-		qdat = read.variables['q1'][:,:,:].data
-		pdat = read.variables['P'][:,:,:].data
-		xs = read.variables['x'][:].data
-		ys = read.variables['y'][:].data
-	with netCDF4.Dataset(loaddir+'N128_%s_2.0_0.1_%s.qref1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))) as read:
-		Qref = read.variables['qref1'][:,:].data
-	_LOG.info('variables loaded')
+    y_len = len(ys)
 
-	L = float(Llist[0])
+    with netCDF4.Dataset(str(data_dir / (base_name + '.qref1_2.nc'))) as ds:
+        Qref = array_utils.ensure_TY(ds.variables['qref1'][:, :].data, y_len=y_len, name='qref1')
+    _LOG.info('Variables loaded')
 
-	times = np.linspace(0, max_lenghth, max_lenghth, endpoint=False)[:]
-	dt = times[1]-times[0]
-	dx = xs[1]-xs[0]
-	dy = ys[1]-ys[0]
+    tn = min(max_time, qdat.shape[0], pdat.shape[0], Qref.shape[0])
+    qdat = qdat[:tn]
+    pdat = pdat[:tn]
+    Qref = Qref[:tn]
 
-	LP = LH(pdat, qdat, Qref, L, dx, dy, filt=False)
-	_LOG.info('budget calculated')
+    dx = xs[1] - xs[0]
+    dy = ys[1] - ys[0]
 
-	with netCDF4.Dataset(savedir+sname,'w') as write:
-		write.createDimension('time', size=len(times))
-		write.createDimension('latitude', size=len(ys))
-		write.createDimension('longitude', size=len(xs))
+    LP = lwabudget.LH(p=pdat, q=qdat, qref=Qref, L=latent_heating, dx=dx, dy=dy, filt=False)
+    _LOG.info('Budget calculated')
 
-		time = write.createVariable('time','f4',dimensions=['time'])
-		latitude = write.createVariable('latitude','f4',dimensions=['latitude'])
-		longitude = write.createVariable('longitude','f4',dimensions=['longitude'])
+    sname = 'LP_' + base_name + '.nc'
+    out_path = output_directory / sname
+    out_path.unlink(missing_ok=True)
 
-		term1 = write.createVariable('LH','f4',dimensions=['time','latitude','longitude'])
+    with netCDF4.Dataset(str(out_path), 'w') as ds_out:
+        ds_out.createDimension('time', size=tn)
+        ds_out.createDimension('latitude', size=len(ys))
+        ds_out.createDimension('longitude', size=len(xs))
 
-		longitude[:]=xs[:]
-		latitude[:]=ys[:]
-		time[:]=times
+        ds_out.createVariable('time', 'f4', dimensions=['time'])
+        ds_out.createVariable('latitude', 'f4', dimensions=['latitude'])
+        ds_out.createVariable('longitude', 'f4', dimensions=['longitude'])
+        ds_out.createVariable('LH', 'f4', dimensions=['time', 'latitude', 'longitude'])
 
-		term1[:,:,:]=LP[:,:,:]
-	_LOG.info('output saved; done')
+        ds_out['longitude'][:] = xs[:]
+        ds_out['latitude'][:] = ys[:]
+        ds_out['time'][:] = np.arange(tn, dtype='f4')
+        ds_out['LH'][:, :, :] = LP[:, :, :]
+
+    _LOG.info('Output saved to %s', out_path)
 
 
 def cli(
     *,
-    load_dir: Annotated[Path, typer.Option(help='Directory containing input NetCDF files')],
-    save_dir: Annotated[Path, typer.Option(help='Directory to save output NetCDF files')],
+    data_dir: typing.Annotated[pathlib.Path, typer.Option(help='Directory containing input NetCDF files')],
+    output_directory: typing.Annotated[pathlib.Path, typer.Option(help='Directory to save output NetCDF files')],
+    base_name: typing.Annotated[str, typer.Option(help='Base filename, e.g. N128_0.0_2.0_0.1_1.0')],
+    latent_heating: typing.Annotated[float, typer.Option(help='Latent heating parameter L')],
+    max_time: typing.Annotated[int, typer.Option(help='Maximum number of timesteps to process')] = 10000,
 ) -> None:
-	print('Computing latent heating contribution of the LWA budget...')
-	compute_lp(load_dir=load_dir, save_dir=save_dir)
-	print('Done.')
+    print('Computing latent heating contribution of the LWA budget...')
+    compute_lp(
+        data_dir=data_dir,
+        output_directory=output_directory,
+        base_name=base_name,
+        latent_heating=latent_heating,
+        max_time=max_time,
+    )
+    print('Done.')
 
 
 if __name__ == '__main__':
-	typer.run(cli)
+    typer.run(cli)

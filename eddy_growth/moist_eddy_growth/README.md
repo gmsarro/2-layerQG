@@ -2,8 +2,10 @@
 
 Utility to compute fastest growing moist modes and associated PV fields.
 
-Usage (Python):
+## Usage
+
 ```python
-from moist_growth_matrix import moist_matrix
-kk, growth, q1p, q2p, P = moist_matrix(L=0.2, U1=1.0, U2=0.5)
-``` 
+import moist_growth_matrix
+
+kk, growth, q1p, q2p, P = moist_growth_matrix.moist_matrix(L=0.2, U1=1.0, U2=0.5)
+```

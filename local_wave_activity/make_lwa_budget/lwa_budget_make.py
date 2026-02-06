@@ -1,18 +1,15 @@
-"""
-Compute all terms of the LWA budget (excluding latent heating contribution) and save to NetCDF.
-"""
-
-from __future__ import annotations
+"""Compute all terms of the LWA budget (excluding latent heating contribution) and save to NetCDF."""
 
 import logging
-from pathlib import Path
-from typing import Final
+import pathlib
+import typing
 
-import numpy as np
 import netCDF4
+import numpy as np
 import typer
-from typing_extensions import Annotated
-from lwabudget import lwatend, urefadv, ueadv, eddyflux_x, eddyflux_y, eddyflux_z, eddyflux
+
+import array_utils
+import lwabudget
 
 
 _LOG = logging.getLogger(__name__)
@@ -20,113 +17,135 @@ _LOG = logging.getLogger(__name__)
 
 def compute_budget(
     *,
-    load_dir: Path,
-    save_dir: Path,
+    data_dir: pathlib.Path,
+    output_directory: pathlib.Path,
+    base_name: str,
+    max_time: int,
+    Ld: float,
 ) -> None:
-	logging.basicConfig(
-		level=logging.INFO,
-		format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-		datefmt='%Y-%m-%d %H:%M:%S',
-	)
-	loaddir = str(load_dir) if str(load_dir).endswith('/') else str(load_dir) + '/'
-	savedir = str(save_dir) if str(save_dir).endswith('/') else str(save_dir) + '/'
+    """Compute all LWA budget terms and save to a single NetCDF file."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+    )
 
-	Llist = np.arange(0.0)
-	Ulist = np.array([1.0], dtype=float)
-	max_lenghth: Final[int] = 10000
-	Ld: Final[float] = 1.0
+    with netCDF4.Dataset(str(data_dir / (base_name + '.3d.nc'))) as ds:
+        qdat = ds.variables['q1'][:, :, :].data
+        vdat = ds.variables['v1'][:, :, :].data
+        udat = ds.variables['u1'][:, :, :].data
+        tdat = ds.variables['tau'][:, :, :].data
+        xs = ds.variables['x'][:].data
+        ys = ds.variables['y'][:].data
 
-	sname = 'LH1_%s_2.0_0.1_%s.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))
+    y_len = len(ys)
+    x_len = len(xs)
 
-	with netCDF4.Dataset(loaddir+'N128_%s_2.0_0.1_%s.3d.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))) as read:
-		qdat = read.variables['q1'][:,:,:].data
-		vdat = read.variables['v1'][:,:,:].data
-		udat = read.variables['u1'][:,:,:].data
-		tdat = read.variables['tau'][:,:,:].data
-		xs = read.variables['x'][:].data
-		ys = read.variables['y'][:].data
+    with netCDF4.Dataset(str(data_dir / (base_name + '.qref1_2.nc'))) as ds:
+        Qref = array_utils.ensure_TY(ds.variables['qref1'][:, :].data, y_len=y_len, name='qref1')
+    with netCDF4.Dataset(str(data_dir / (base_name + '.uref1_2.nc'))) as ds:
+        Uref = array_utils.ensure_TY(ds.variables['uref1'][:, :].data, y_len=y_len, name='uref1')
+    with netCDF4.Dataset(str(data_dir / (base_name + '.tref1_2.nc'))) as ds:
+        Tref = array_utils.ensure_TY(ds.variables['tref1'][:, :].data, y_len=y_len, name='tref1')
+    with netCDF4.Dataset(str(data_dir / (base_name + '.wac1_2.nc'))) as ds:
+        LWAC = array_utils.ensure_TYX(ds.variables['wac1'][:, :, :].data, y_len=y_len, x_len=x_len, name='wac1')
+    with netCDF4.Dataset(str(data_dir / (base_name + '.waa1_2.nc'))) as ds:
+        LWAA = array_utils.ensure_TYX(ds.variables['waa1'][:, :, :].data, y_len=y_len, x_len=x_len, name='waa1')
 
-	with netCDF4.Dataset(loaddir+'N128_%s_2.0_0.1_%s.qref1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))) as read:
-		Qref = read.variables['qref1'][:,:].data
-	with netCDF4.Dataset(loaddir+'N128_%s_2.0_0.1_%s.uref1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))) as read:
-		Uref = read.variables['uref1'][:,:].data
-	with netCDF4.Dataset(loaddir+'N128_%s_2.0_0.1_%s.tref1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))) as read:
-		Tref = read.variables['tref1'][:,:].data
-	with netCDF4.Dataset(loaddir+'N128_%s_2.0_0.1_%s.wac1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))) as read:
-		LWAC = read.variables['wac1'][:,:,:].data
-	with netCDF4.Dataset(loaddir+'N128_%s_2.0_0.1_%s.waa1_2.nc'%(str(np.round(Llist[0],2)),str(np.round(Ulist[0],2)))) as read:
-		LWAA = read.variables['waa1'][:,:,:].data
-	LWA = LWAA[:,:,:] + LWAC[:,:,:]
-	_LOG.info('variables loaded')
+    LWA = LWAA + LWAC
+    _LOG.info('Variables loaded')
 
-	qe = qdat[:,:,:]-Qref[:,:,np.newaxis]
-	ue = udat[:,:,:]-Uref[:,:,np.newaxis]
-	ve = vdat[:,:,:]
-	te = tdat[:,:,:]-Tref[:,:,np.newaxis]
-	_LOG.info('eddy variables calculated')
+    tn = min(
+        max_time,
+        qdat.shape[0], vdat.shape[0], udat.shape[0], tdat.shape[0],
+        Qref.shape[0], Uref.shape[0], Tref.shape[0],
+        LWAC.shape[0], LWAA.shape[0],
+    )
+    qdat = qdat[:tn]
+    vdat = vdat[:tn]
+    udat = udat[:tn]
+    tdat = tdat[:tn]
+    Qref = Qref[:tn]
+    Uref = Uref[:tn]
+    Tref = Tref[:tn]
+    LWA = LWA[:tn]
 
-	times = np.linspace(0, max_lenghth, max_lenghth, endpoint=False)[:]
-	dt = times[1]-times[0]
-	dx = xs[1]-xs[0]
-	dy = ys[1]-ys[0]
+    qe = qdat[:, :, :] - Qref[:, :, np.newaxis]
+    ue = udat[:, :, :] - Uref[:, :, np.newaxis]
+    ve = vdat[:, :, :]
+    te = tdat[:, :, :] - Tref[:, :, np.newaxis]
+    _LOG.info('Eddy variables calculated')
 
-	LWAtend = lwatend(lwa=LWA, dt=dt)
-	Urefadv = urefadv(lwa=LWA, uref=Uref, dx=dx, filt=False)
-	ueqeadv = ueadv(q=qdat, qref=Qref, u=udat, uref=Uref, dx=dx, dy=dy, filt=False)
-	EF_x = eddyflux_x(ue=ue, ve=ve, dx=dx, filt=False)
-	EF_y = eddyflux_y(ue=ue, ve=ve, dy=dy, filt=False)
-	EF_z = eddyflux_z(ve=ve, te=te, Ld=Ld, filt=False)
-	EF = eddyflux(ve=ve, qe=qe, filt=False)
+    dt = 1.0
+    dx = xs[1] - xs[0]
+    dy = ys[1] - ys[0]
 
-	RHS = Urefadv + ueqeadv + EF_x + EF_y + EF_z
-	RES = LWAtend - RHS
+    LWAtend = lwabudget.lwatend(lwa=LWA, dt=dt)
+    Urefadv = lwabudget.urefadv(lwa=LWA, uref=Uref, dx=dx, filt=False)
+    ueqeadv = lwabudget.ueadv(q=qdat, qref=Qref, u=udat, uref=Uref, dx=dx, dy=dy, filt=False)
+    EF_x = lwabudget.eddyflux_x(ue=ue, ve=ve, dx=dx, filt=False)
+    EF_y = lwabudget.eddyflux_y(ue=ue, ve=ve, dy=dy, filt=False)
+    EF_z = lwabudget.eddyflux_z(ve=ve, te=te, Ld=Ld, filt=False)
+    EF = lwabudget.eddyflux(ve=ve, qe=qe, filt=False)
 
-	_LOG.info('budget calculated')
+    RHS = Urefadv + ueqeadv + EF_x + EF_y + EF_z
+    RES = LWAtend - RHS
+    _LOG.info('Budget calculated')
 
-	import os
-	os_system_rm: str = 'rm -f %s%s'%(savedir, sname)
-	os.system(os_system_rm)
-	with netCDF4.Dataset(savedir+sname,'w') as write:
-		write.createDimension('time', size=len(times))
-		write.createDimension('latitude', size=len(ys))
-		write.createDimension('longitude', size=len(xs))
+    sname = 'LH1_' + base_name + '.nc'
+    out_path = output_directory / sname
+    out_path.unlink(missing_ok=True)
 
-		time = write.createVariable('time','f4',dimensions=['time'])
-		latitude = write.createVariable('latitude','f4',dimensions=['latitude'])
-		longitude = write.createVariable('longitude','f4',dimensions=['longitude'])
+    with netCDF4.Dataset(str(out_path), 'w') as ds_out:
+        ds_out.createDimension('time', size=tn)
+        ds_out.createDimension('latitude', size=len(ys))
+        ds_out.createDimension('longitude', size=len(xs))
 
-		term1 = write.createVariable('lwatend','f4',dimensions=['time','latitude','longitude'])
-		term2 = write.createVariable('urefadv','f4',dimensions=['time','latitude','longitude'])
-		term3 = write.createVariable('ueqeadv','f4',dimensions=['time','latitude','longitude'])
-		term4 = write.createVariable('ef_x','f4',dimensions=['time','latitude','longitude'])
-		term5 = write.createVariable('ef_y','f4',dimensions=['time','latitude','longitude'])
-		term6 = write.createVariable('ef_z','f4',dimensions=['time','latitude','longitude'])
-		term7 = write.createVariable('res','f4',dimensions=['time','latitude','longitude'])
+        ds_out.createVariable('time', 'f4', dimensions=['time'])
+        ds_out.createVariable('latitude', 'f4', dimensions=['latitude'])
+        ds_out.createVariable('longitude', 'f4', dimensions=['longitude'])
 
-		longitude[:]=xs[:]
-		latitude[:]=ys[:]
-		time[:]=times
+        ds_out.createVariable('lwatend', 'f4', dimensions=['time', 'latitude', 'longitude'])
+        ds_out.createVariable('urefadv', 'f4', dimensions=['time', 'latitude', 'longitude'])
+        ds_out.createVariable('ueqeadv', 'f4', dimensions=['time', 'latitude', 'longitude'])
+        ds_out.createVariable('ef_x', 'f4', dimensions=['time', 'latitude', 'longitude'])
+        ds_out.createVariable('ef_y', 'f4', dimensions=['time', 'latitude', 'longitude'])
+        ds_out.createVariable('ef_z', 'f4', dimensions=['time', 'latitude', 'longitude'])
+        ds_out.createVariable('res', 'f4', dimensions=['time', 'latitude', 'longitude'])
 
-		term1[:,:,:]=LWAtend[:,:,:]
-		term2[:,:,:]=Urefadv[:,:,:]
-		term3[:,:,:]=ueqeadv[:,:,:]
-		term4[:,:,:]=EF_x[:,:,:]
-		term5[:,:,:]=EF_y[:,:,:]
-		term6[:,:,:]=EF_z[:,:,:]
-		term7[:,:,:]=RES[:,:,:]
+        ds_out['longitude'][:] = xs[:]
+        ds_out['latitude'][:] = ys[:]
+        ds_out['time'][:] = np.arange(tn, dtype='f4')
 
-	_LOG.info('output saved; done')
+        ds_out['lwatend'][:, :, :] = LWAtend[:, :, :]
+        ds_out['urefadv'][:, :, :] = Urefadv[:, :, :]
+        ds_out['ueqeadv'][:, :, :] = ueqeadv[:, :, :]
+        ds_out['ef_x'][:, :, :] = EF_x[:, :, :]
+        ds_out['ef_y'][:, :, :] = EF_y[:, :, :]
+        ds_out['ef_z'][:, :, :] = EF_z[:, :, :]
+        ds_out['res'][:, :, :] = RES[:, :, :]
+
+    _LOG.info('Output saved to %s', out_path)
 
 
 def cli(
     *,
-    load_dir: Annotated[Path, typer.Option(help='Directory containing input NetCDF files')],
-    save_dir: Annotated[Path, typer.Option(help='Directory to save output NetCDF files')],
+    data_dir: typing.Annotated[pathlib.Path, typer.Option(help='Directory containing input NetCDF files')],
+    output_directory: typing.Annotated[pathlib.Path, typer.Option(help='Directory to save output NetCDF files')],
+    base_name: typing.Annotated[str, typer.Option(help='Base filename, e.g. N128_0.0_2.0_0.1_1.0')],
+    max_time: typing.Annotated[int, typer.Option(help='Maximum number of timesteps to process')] = 10000,
+    ld: typing.Annotated[float, typer.Option(help='Deformation radius')] = 1.0,
 ) -> None:
-	print('Computing LWA budget terms...')
-	compute_budget(load_dir=load_dir, save_dir=save_dir)
-	print('Done.')
+    print('Computing LWA budget terms...')
+    compute_budget(
+        data_dir=data_dir,
+        output_directory=output_directory,
+        base_name=base_name,
+        max_time=max_time,
+        Ld=ld,
+    )
+    print('Done.')
 
 
 if __name__ == '__main__':
-	typer.run(cli)
+    typer.run(cli)
