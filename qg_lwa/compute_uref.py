@@ -1,19 +1,17 @@
-"""Calculate U_REF and T_REF from Q_REF; all variables are nondimensionalized."""
+"""Compute U_REF and T_REF from Q_REF."""
 
 import logging
 import pathlib
 import typing
-from typing import Any
 
 import netCDF4
 import numpy as np
-import numpy.typing as npt
+import numpy.typing
 import typer
 
 import qg_lwa.array_utils
 
-NDArrayF = npt.NDArray[np.floating[Any]]
-
+NDArrayF = numpy.typing.NDArray[np.floating[typing.Any]]
 
 _LOG = logging.getLogger(__name__)
 
@@ -32,34 +30,6 @@ def solve_uref(
     max_iterations: int = 10000,
     relax: float = 1.9,
 ) -> NDArrayF:
-    """Solve SOR for U_REF given Q_REF gradient and boundary conditions.
-
-    Parameters
-    ----------
-    qref : array (time, latitude)
-        Reference PV.
-    um : array (time, latitude)
-        Zonal-mean U (upper) for initial guess and boundary.
-    umb : array (time, latitude)
-        Zonal-mean U (lower) used in forcing term.
-    ys : array (latitude,)
-        Latitude coordinate (monotonic, evenly spaced).
-    beta : float
-        Nondimensional beta parameter.
-    Ld : float
-        Deformation radius.
-    maxerr : float
-        Convergence tolerance.
-    max_iterations : int
-        Maximum SOR iterations.
-    relax : float
-        Relaxation factor.
-
-    Returns
-    -------
-    array (time, latitude)
-        Computed U_REF.
-    """
     tn, yn = np.shape(qref)
     dy = ys[1] - ys[0]
     AC = np.array([1 / dy**2, -2 / dy**2, 1 / dy**2])
@@ -90,22 +60,6 @@ def integrate_tref(
     ys: NDArrayF,
     tm: NDArrayF,
 ) -> NDArrayF:
-    """Integrate for T_REF from U_REF shear and adjust mean to match boundary template.
-
-    Parameters
-    ----------
-    uref : array (time, latitude)
-        Reference zonal wind.
-    ys : array (latitude,)
-        Latitude coordinate.
-    tm : array (time, latitude)
-        Zonal-mean temperature used for offset constraint.
-
-    Returns
-    -------
-    array (time, latitude)
-        Reference temperature.
-    """
     tn, yn = np.shape(uref)
     dy = ys[1] - ys[0]
     tref = np.zeros((tn, yn))
@@ -127,7 +81,6 @@ def compute_and_save(
     Ld: float,
     max_time: int,
 ) -> None:
-    """Compute U_REF and T_REF and save to NetCDF."""
     qref_path = data_dir / (base_name + '.qref1_2.nc')
     mean_path = data_dir / (base_name + '.nc')
 

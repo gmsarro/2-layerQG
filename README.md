@@ -41,7 +41,7 @@ file, and the domain extent (`--lx`, `--ly`) is configurable.
 # Step 1: Compute reference PV and LWA (Fortran compiled automatically on first run)
 qg-compute-lwa \
   --input-nc /path/to/model.3d.nc \
-  --output-dir /path/to/output \
+  --output-directory /path/to/output \
   --lx 48.0 --ly 72.0
 
 # Step 2: Compute reference wind (U_ref) and temperature (T_ref)
@@ -192,7 +192,7 @@ the [falwa package](https://github.com/csyhuang/hn2016_falwa).
 
 If you use this code, please cite:
 
-> Sarro, G. M., Lutsko, N. J., and Hell, M. C. (2025). *Title TBD*. Journal TBD.
+> Sarro, G., J. Kang, S. Smith, A. Chaudhri, and N. Nakamura, 2026: Non-monotonic response of blocking dynamics with increased latent heating in an Idealized 2-Layer QG model. *In Revision, Journal of the Atmospheric Sciences*.
 
 ## License
 

@@ -1,4 +1,4 @@
-"""Compute all terms of the LWA budget (excluding latent heating) and save to NetCDF."""
+"""Compute all terms of the LWA budget (excluding latent heating)."""
 
 import logging
 import pathlib
@@ -25,7 +25,6 @@ def compute_budget(
     max_time: int,
     Ld: float,
 ) -> None:
-    """Compute all LWA budget terms and save to a single NetCDF file."""
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',

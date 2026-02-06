@@ -1,35 +1,25 @@
-"""Compute fastest growing moist modes in a 2-layer QG model.
+"""Compute fastest growing moist modes in a 2-layer QG model."""
 
-Solves a 3x3 complex generalized eigenvalue problem across a range of
-zonal wavenumbers to find the maximum moist growth rate and associated
-PV structure.
-"""
-
-import logging
 import typing
-from typing import Any
 
 import numpy as np
 import numpy.typing
 import scipy.linalg  # type: ignore[import-untyped]
 
 
-_LOG = logging.getLogger(__name__)
-
-
 def laplacian(
     *,
-    f: numpy.typing.NDArray[np.floating[Any]],
+    f: numpy.typing.NDArray[np.floating[typing.Any]],
     dx: float,
-) -> numpy.typing.NDArray[np.floating[Any]]:
+) -> numpy.typing.NDArray[np.floating[typing.Any]]:
     return (np.roll(f, -1) - 2 * f + np.roll(f, 1)) / dx**2  # type: ignore[no-any-return]
 
 
 def gradient(
     *,
-    f: numpy.typing.NDArray[np.floating[Any]],
+    f: numpy.typing.NDArray[np.floating[typing.Any]],
     dx: float,
-) -> numpy.typing.NDArray[np.floating[Any]]:
+) -> numpy.typing.NDArray[np.floating[typing.Any]]:
     return (np.roll(f, -1) - np.roll(f, 1)) / (2 * dx)
 
 
@@ -39,36 +29,12 @@ def moist_matrix(
     U1: float,
     U2: float,
 ) -> tuple[
-    numpy.typing.NDArray[np.floating[Any]],
-    numpy.typing.NDArray[np.floating[Any]],
-    numpy.typing.NDArray[np.floating[Any]],
-    numpy.typing.NDArray[np.floating[Any]],
-    numpy.typing.NDArray[np.floating[Any]],
+    numpy.typing.NDArray[np.floating[typing.Any]],
+    numpy.typing.NDArray[np.floating[typing.Any]],
+    numpy.typing.NDArray[np.floating[typing.Any]],
+    numpy.typing.NDArray[np.floating[typing.Any]],
+    numpy.typing.NDArray[np.floating[typing.Any]],
 ]:
-    """Compute fastest growing moist mode across wavenumber space.
-
-    Parameters
-    ----------
-    L : float
-        Latent heating parameter.
-    U1 : float
-        Upper-layer mean zonal wind.
-    U2 : float
-        Lower-layer mean zonal wind.
-
-    Returns
-    -------
-    kk : array (4000,)
-        Wavenumber array.
-    growth : array (4000,)
-        Growth rate at each wavenumber.
-    q1_prime : array
-        Upper-layer PV of the fastest-growing mode (real space).
-    q2_prime : array
-        Lower-layer PV of the fastest-growing mode (real space).
-    P : array
-        Precipitation of the fastest-growing mode (real space).
-    """
     delta: typing.Final[float] = 1.0
     el: typing.Final[float] = 0.0
     ep: typing.Final[float] = 0.5
@@ -80,10 +46,10 @@ def moist_matrix(
     G: float = B - (D + C * L) / (delta * (1.0 - L))
     E: float = 0.5 * L / (1.0 - L)
 
-    aa: numpy.typing.NDArray[np.complexfloating[Any, Any]] = np.zeros((3, 3), dtype=complex)
-    bb: numpy.typing.NDArray[np.complexfloating[Any, Any]] = np.zeros((3, 3), dtype=complex)
-    growth: numpy.typing.NDArray[np.floating[Any]] = np.zeros(4000)
-    kk: numpy.typing.NDArray[np.floating[Any]] = np.zeros(4000)
+    aa: numpy.typing.NDArray[np.complexfloating[typing.Any, typing.Any]] = np.zeros((3, 3), dtype=complex)
+    bb: numpy.typing.NDArray[np.complexfloating[typing.Any, typing.Any]] = np.zeros((3, 3), dtype=complex)
+    growth: numpy.typing.NDArray[np.floating[typing.Any]] = np.zeros(4000)
+    kk: numpy.typing.NDArray[np.floating[typing.Any]] = np.zeros(4000)
 
     m: int = 1
     while m < 4000:
@@ -141,7 +107,7 @@ def moist_matrix(
     psi_2_prime = V[1, peak_mode_index]
     P_prime = 0.5 * V[2, peak_mode_index] * L
 
-    x: numpy.typing.NDArray[np.floating[Any]] = np.arange(0, 6 * np.pi, 0.1)
+    x: numpy.typing.NDArray[np.floating[typing.Any]] = np.arange(0, 6 * np.pi, 0.1)
     dx = 0.1
     psi_1 = (np.outer(psi_1_prime.real, np.cos(rk * x)) - np.outer(psi_1_prime.imag, np.sin(rk * x)))[0, :]
     psi_2 = (np.outer(psi_2_prime.real, np.cos(rk * x)) - np.outer(psi_2_prime.imag, np.sin(rk * x)))[0, :]

@@ -1,4 +1,4 @@
-"""Compute the latent heating contribution of the LWA budget and save to NetCDF."""
+"""Compute the latent heating contribution of the LWA budget."""
 
 import logging
 import pathlib
@@ -25,7 +25,6 @@ def compute_lp(
     latent_heating: float,
     max_time: int,
 ) -> None:
-    """Compute the latent heating LWA budget term and save to NetCDF."""
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',

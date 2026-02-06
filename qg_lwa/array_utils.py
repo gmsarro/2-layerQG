@@ -1,16 +1,11 @@
-"""Utilities for coercing array orientations from NetCDF files.
+"""Array orientation coercion utilities for NetCDF files."""
 
-The Fortran LWA codes may write arrays as (Y, T) or (X, Y, T) rather
-than the expected (T, Y) or (T, Y, X).  These helpers detect the layout
-and transpose when necessary.
-"""
-
-from typing import Any
+import typing
 
 import numpy as np
-import numpy.typing as npt
+import numpy.typing
 
-NDArrayF = npt.NDArray[np.floating[Any]]
+NDArrayF = numpy.typing.NDArray[np.floating[typing.Any]]
 
 
 def ensure_TY(
@@ -19,7 +14,6 @@ def ensure_TY(
     y_len: int,
     name: str = '',
 ) -> NDArrayF:
-    """Return *arr* as (time, y).  Accepts (T, Y) or (Y, T)."""
     if arr.ndim != 2:
         raise ValueError('%s must be 2-D, got %d-D with shape %s' % (name, arr.ndim, arr.shape))
     s0, s1 = arr.shape
@@ -37,7 +31,6 @@ def ensure_TYX(
     x_len: int,
     name: str = '',
 ) -> NDArrayF:
-    """Return *arr* as (time, y, x).  Handles common permutations."""
     if arr.ndim != 3:
         raise ValueError('%s must be 3-D, got %d-D with shape %s' % (name, arr.ndim, arr.shape))
     s0, s1, s2 = arr.shape

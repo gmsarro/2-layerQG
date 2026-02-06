@@ -1,28 +1,19 @@
-"""
-Numerical verification: prove that the packaged code produces identical
-results to the original working scripts.
+"""Numerical verification: packaged code produces identical results to original scripts."""
 
-Compares:
-  1. qg_lwa.budget functions (keyword-only) vs original positional API
-  2. SOR solver (qg_lwa.compute_uref) vs pre-existing reference output
-  3. qg_eddy_growth.matrices vs original build_matrices
-  4. qg_eddy_growth.moist_growth vs original moist_growth_matrix
-  5. ueadv on real data (3 timesteps)
-  6. LH (latent heating) on real data (3 timesteps)
-  7. f2py compute_lwa (qref, waa, wac) vs pre-existing reference files
-
-Usage:
-  pip install -e .
-  python tests/test_verify.py
-"""
-
-import sys
-import pathlib
 import importlib
 import importlib.util
-import numpy as np
+import pathlib
+import sys
+
 import netCDF4
+import numpy as np
 import xarray as xr
+
+import qg_lwa.budget
+import qg_lwa.compute_lwa
+import qg_lwa.compute_uref
+import qg_eddy_growth.matrices
+import qg_eddy_growth.moist_growth
 
 DATADIR = pathlib.Path('/mnt/winds/data/gmsarro/100_year_runs')
 BASE = 'Realistic_two_N128_0.0_2.0_0.1_1.0'
@@ -45,7 +36,6 @@ def check(name: str, condition: bool, detail: str = '') -> None:
 
 
 def load_module_from_file(name: str, filepath: str) -> object:
-    """Import a Python module from an explicit file path."""
     parent = str(pathlib.Path(filepath).parent)
     added = parent not in sys.path
     if added:
@@ -61,14 +51,11 @@ def load_module_from_file(name: str, filepath: str) -> object:
 
 
 def _load_TY_xr(path: str, varname: str, max_time: int) -> np.ndarray:
-    """Load a 2-D variable from NetCDF and return as (time, y) numpy array."""
     with xr.open_dataset(path) as ds:
         da = ds[varname]
-        # Identify the time dim (the large one) and y dim
         dims = list(da.dims)
         if len(dims) != 2:
             raise ValueError(f'{varname}: expected 2 dims, got {dims}')
-        # Normalise to (time-like, y-like) by checking size
         if da.sizes[dims[0]] >= da.sizes[dims[1]]:
             da = da.transpose(dims[0], dims[1])
         else:
@@ -77,18 +64,15 @@ def _load_TY_xr(path: str, varname: str, max_time: int) -> np.ndarray:
 
 
 def _load_TYX_xr(path: str, varname: str, max_time: int) -> np.ndarray:
-    """Load a 3-D variable from NetCDF using dimension names for correct ordering."""
     with xr.open_dataset(path) as ds:
         da = ds[varname]
         dims = list(da.dims)
         if len(dims) != 3:
             raise ValueError(f'{varname}: expected 3 dims, got {dims}')
-        # Find time dim (the large one), then y-like and x-like
         time_candidates = [d for d in dims if 'time' in d.lower() or d == 't']
         lat_candidates = [d for d in dims if d in ('y', 'lat', 'latitude')]
         lon_candidates = [d for d in dims if d in ('x', 'lon', 'longitude')]
         if not time_candidates or not lat_candidates or not lon_candidates:
-            # Fall back to size: time is the largest dim
             sizes = [(da.sizes[d], d) for d in dims]
             sizes.sort(reverse=True)
             tdim_name = sizes[0][1]
@@ -103,7 +87,6 @@ def _load_TYX_xr(path: str, varname: str, max_time: int) -> np.ndarray:
         return da.values[:max_time, :, :]
 
 
-# ── Load shared data ───────────────────────────────────────────────────
 print('Loading test data from', DATADIR / BASE)
 with netCDF4.Dataset(str(DATADIR / (BASE + '.nc'))) as ds:
     um_full = ds.variables['zu1'][:, :].data
@@ -141,9 +124,6 @@ Ld = 1.0
 print(f'Data loaded: {tn} timesteps, y={yn}, x={xn}\n')
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# TEST 1: qg_lwa.budget — old (positional) vs new (keyword-only)
-# ═══════════════════════════════════════════════════════════════════════
 print('=' * 70)
 print('TEST 1: qg_lwa.budget functions — original vs package')
 print('=' * 70)
@@ -152,7 +132,6 @@ lwabudget_old = load_module_from_file(
     'lwabudget_old',
     '/mnt/winds/data2/gmsarro/Rossbypalloza_project_22/LWA/run_LWA/lwabudget.py',
 )
-import qg_lwa.budget
 
 old_lwatend = lwabudget_old.lwatend(LWA, dt)
 new_lwatend = qg_lwa.budget.lwatend(lwa=LWA, dt=dt)
@@ -195,15 +174,10 @@ check('eddyflux', np.allclose(old_ef, new_ef, atol=0),
       f'max diff = {np.max(np.abs(old_ef - new_ef)):.2e}')
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# TEST 2: SOR solver — refactored vs pre-existing reference output
-# ═══════════════════════════════════════════════════════════════════════
 print()
 print('=' * 70)
 print('TEST 2: SOR solver (qg_lwa.compute_uref) — vs original output files')
 print('=' * 70)
-
-import qg_lwa.compute_uref
 
 uref_new = qg_lwa.compute_uref.solve_uref(
     qref=qref, um=um, umb=umb, ys=ys, beta=0.2, Ld=1.0,
@@ -219,9 +193,6 @@ check('tref vs reference file', tref_diff < 5e-6,
       f'max |diff| = {tref_diff:.2e} (integrated from uref)')
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# TEST 3: build_matrices — old (half_maxtrix) vs new (half_matrix)
-# ═══════════════════════════════════════════════════════════════════════
 print()
 print('=' * 70)
 print('TEST 3: qg_eddy_growth.matrices — typo rename')
@@ -241,7 +212,6 @@ bm_old = load_module_from_file(
     'bm_old',
     '/mnt/winds/data2/gmsarro/Rossbypalloza_project_22/LWA/run_LWA/build_matrices.py',
 )
-import qg_eddy_growth.matrices
 
 try:
     M_old, N_old = bm_old.build_matrices(
@@ -264,9 +234,6 @@ check('N matrix identical', np.allclose(N_old, N_new, atol=0),
       f'max diff = {np.max(np.abs(N_old - N_new)):.2e}')
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# TEST 4: moist_growth_matrix — old vs new
-# ═══════════════════════════════════════════════════════════════════════
 print()
 print('=' * 70)
 print('TEST 4: qg_eddy_growth.moist_growth — old vs new')
@@ -278,8 +245,6 @@ mgm_old_path = pathlib.Path(
 has_old_mgm = mgm_old_path.exists()
 if has_old_mgm:
     mgm_old = load_module_from_file('mgm_old', str(mgm_old_path))
-
-import qg_eddy_growth.moist_growth
 
 if has_old_mgm:
     try:
@@ -304,9 +269,6 @@ else:
     check('moist_matrix runs', True, f'peak growth = {np.max(gr_new):.6f}')
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# TEST 5: ueadv (expensive O(T*Y^2*X) function) — small subset
-# ═══════════════════════════════════════════════════════════════════════
 print()
 print('=' * 70)
 print('TEST 5: ueadv — original vs package (3 timesteps)')
@@ -325,9 +287,6 @@ check('ueadv', np.allclose(old_ueadv, new_ueadv, atol=0),
       f'max diff = {np.max(np.abs(old_ueadv - new_ueadv)):.2e}')
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# TEST 6: LH function — original vs package (3 timesteps)
-# ═══════════════════════════════════════════════════════════════════════
 print()
 print('=' * 70)
 print('TEST 6: LH (latent heating) — original vs package (3 timesteps)')
@@ -346,19 +305,13 @@ check('LH (L=0.0)', np.allclose(old_LH, new_LH, atol=0),
       f'max diff = {np.max(np.abs(old_LH - new_LH)):.2e}')
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# TEST 7: compute_lwa (f2py) — new package vs reference files
-# ═══════════════════════════════════════════════════════════════════════
 print()
 print('=' * 70)
 print('TEST 7: compute_lwa (f2py) — qg_lwa.compute_lwa vs reference files')
 print('=' * 70)
 
-from qg_lwa.compute_lwa import mask_sponge, _get_fortran  # noqa: E402
+fortran = qg_lwa.compute_lwa._get_fortran()
 
-fortran = _get_fortran()
-
-# Load q1 via xarray exactly as compute_lwa.py does
 with xr.open_dataset(str(DATADIR / (BASE + '.3d.nc'))) as ds_3d:
     tdim_lwa = 'time'
     ydim_lwa = 'y'
@@ -368,22 +321,18 @@ with xr.open_dataset(str(DATADIR / (BASE + '.3d.nc'))) as ds_3d:
         tdim_lwa, ydim_lwa, xdim_lwa,
     )
 
-q1_masked = mask_sponge(q1=q1_lwa, tdim=tdim_lwa, ydim=ydim_lwa, xdim=xdim_lwa)
+q1_masked = qg_lwa.compute_lwa.mask_sponge(q1=q1_lwa, tdim=tdim_lwa, ydim=ydim_lwa, xdim=xdim_lwa)
 
-# Domain extents used to generate the reference files (from calc_lwa_2layer_g.py)
 lx_ref, ly_ref = 48.0, 72.0
 
-# Prepare for Fortran — exactly as compute_lwa.py
 q1_np = np.asfortranarray(q1_masked.values.transpose(2, 1, 0))
 qref_f2py = fortran.lwa_2layer.calc_qref(q1_np, wx=lx_ref, wy=ly_ref)
 waa_f2py, wac_f2py = fortran.lwa_2layer.calc_lwa(q1_np, qref_f2py, wx=lx_ref, wy=ly_ref)
 
-# Transpose outputs — exactly as compute_lwa.py
-qref_new = qref_f2py.T                   # (y, t) -> (t, y)
-waa_new = waa_f2py.transpose(2, 1, 0)    # (x, y, t) -> (t, y, x)
+qref_new = qref_f2py.T
+waa_new = waa_f2py.transpose(2, 1, 0)
 wac_new = wac_f2py.transpose(2, 1, 0)
 
-# Load reference using xarray for correct axis ordering
 qref_ref_lwa = _load_TY_xr(str(DATADIR / (BASE + '.qref1_2.nc')), 'qref1', MAX_TIME)
 waa_ref_lwa = _load_TYX_xr(str(DATADIR / (BASE + '.waa1_2.nc')), 'waa1', MAX_TIME)
 wac_ref_lwa = _load_TYX_xr(str(DATADIR / (BASE + '.wac1_2.nc')), 'wac1', MAX_TIME)
@@ -400,9 +349,6 @@ check('compute_lwa wac', np.allclose(wac_new, wac_ref_lwa, atol=1e-6),
       f'max |diff| = {wac_diff:.2e}')
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# Summary
-# ═══════════════════════════════════════════════════════════════════════
 print()
 print('=' * 70)
 total = n_pass + n_fail

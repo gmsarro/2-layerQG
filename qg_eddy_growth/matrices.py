@@ -1,6 +1,6 @@
-"""Build coefficient matrices for the generalized eigenvalue problem of a 2-layer QG model."""
+"""Build coefficient matrices for the 2-layer QG generalized eigenvalue problem."""
 
-from typing import Any
+import typing
 
 import numpy as np
 import numpy.typing
@@ -8,43 +8,17 @@ import numpy.typing
 
 def build_matrices(
     *,
-    u1: numpy.typing.NDArray[np.floating[Any]],
-    u2: numpy.typing.NDArray[np.floating[Any]],
+    u1: numpy.typing.NDArray[np.floating[typing.Any]],
+    u2: numpy.typing.NDArray[np.floating[typing.Any]],
     beta: float,
     dy: float,
     n_2: int,
     rk: float,
     half_matrix: int,
     n: int,
-) -> tuple[numpy.typing.NDArray[np.floating[Any]], numpy.typing.NDArray[np.floating[Any]]]:
-    """Construct coefficient matrices M and N for the 2-layer QG eigenproblem.
-
-    Parameters
-    ----------
-    u1 : array (latitude,)
-        Upper-layer mean zonal wind.
-    u2 : array (latitude,)
-        Lower-layer mean zonal wind.
-    beta : float
-        Planetary vorticity gradient.
-    dy : float
-        Meridional grid spacing.
-    n_2 : int
-        Total system size (2 * number of meridional points).
-    rk : float
-        Zonal wavenumber.
-    half_matrix : int
-        Half matrix size (n - 2) for block partitioning.
-    n : int
-        Number of meridional grid points.
-
-    Returns
-    -------
-    (M, N) : tuple of arrays
-        Matrices for the generalized eigenvalue problem Mv = cNv.
-    """
-    M: numpy.typing.NDArray[np.floating[Any]] = np.zeros((n_2 - 4, n_2 - 4))
-    N: numpy.typing.NDArray[np.floating[Any]] = np.zeros((n_2 - 4, n_2 - 4))
+) -> tuple[numpy.typing.NDArray[np.floating[typing.Any]], numpy.typing.NDArray[np.floating[typing.Any]]]:
+    M: numpy.typing.NDArray[np.floating[typing.Any]] = np.zeros((n_2 - 4, n_2 - 4))
+    N: numpy.typing.NDArray[np.floating[typing.Any]] = np.zeros((n_2 - 4, n_2 - 4))
 
     for j in range(n - 4):
         M[j, j] = -u1[j + 1] * (rk**2 * dy**2 + 2.0 + dy**2)

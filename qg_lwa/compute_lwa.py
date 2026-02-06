@@ -1,15 +1,4 @@
-"""Compute reference PV and local wave activity from model PV.
-
-Uses an f2py-wrapped Fortran module (``lwa_2layer``) for the heavy
-computation.  Dimensions and grid extents are read from the input file
-and passed as arguments -- no hardcoded resolution.
-
-Pipeline:
-  1. Read PV, mask sponge-layer artefacts (cap to zonal extrema)
-  2. Call Fortran ``calc_qref`` to compute the equivalent-latitude reference PV
-  3. Call Fortran ``calc_lwa`` to compute cyclonic and anticyclonic LWA
-  4. Write ``<stem>.qref1_2.nc``, ``<stem>.waa1_2.nc``, ``<stem>.wac1_2.nc``
-"""
+"""Compute reference PV and local wave activity from model PV via f2py."""
 
 import importlib
 import logging
@@ -19,8 +8,8 @@ import sys
 import typing
 
 import numpy as np
-import xarray as xr
 import typer
+import xarray as xr
 
 
 _LOG = logging.getLogger(__name__)
@@ -30,7 +19,6 @@ app = typer.Typer(help='Compute reference PV and LWA from model PV (any resoluti
 
 
 def _build_fortran() -> None:
-    """Compile lwa_2layer.f90 via f2py (requires gfortran)."""
     src = _FORTRAN_DIR / 'lwa_2layer.f90'
     if not src.exists():
         raise FileNotFoundError(
@@ -48,7 +36,6 @@ def _build_fortran() -> None:
 
 
 def _get_fortran() -> typing.Any:
-    """Import the lwa_2layer Fortran module, compiling on first use."""
     fortran_str = str(_FORTRAN_DIR)
     if fortran_str not in sys.path:
         sys.path.insert(0, fortran_str)
@@ -65,7 +52,6 @@ def _find_dim(
     name: str,
     fallbacks: tuple[str, ...] = (),
 ) -> str:
-    """Find a dimension by name with fallback aliases."""
     for candidate in (name, *fallbacks):
         if candidate in ds.dims:
             return candidate
@@ -81,7 +67,6 @@ def mask_sponge(
     ydim: str,
     xdim: str,
 ) -> xr.DataArray:
-    """Cap PV to zonal-mean extrema to remove sponge-layer artefacts."""
     q1_mean = q1.mean(xdim, skipna=True)
     loc_max = q1_mean.argmax(ydim, skipna=True)
     loc_min = q1_mean.argmin(ydim, skipna=True)
@@ -96,19 +81,18 @@ def mask_sponge(
 def compute_lwa_from_model_pv(
     *,
     input_nc: pathlib.Path,
-    output_dir: pathlib.Path,
+    output_directory: pathlib.Path,
     lx: float,
     ly: float,
     max_time: typing.Optional[int] = None,
 ) -> None:
-    """Full pipeline: read model PV, compute qref and LWA, write outputs."""
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
     )
     fortran = _get_fortran()
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_directory.mkdir(parents=True, exist_ok=True)
 
     with xr.open_dataset(input_nc) as ds:
         tdim = _find_dim(ds, name='time', fallbacks=('t',))
@@ -121,10 +105,10 @@ def compute_lwa_from_model_pv(
 
     q1_masked = mask_sponge(q1=q1, tdim=tdim, ydim=ydim, xdim=xdim)
     q1_np = np.asfortranarray(q1_masked.values.transpose(2, 1, 0))
-    _LOG.info('PV masked; calling Fortran calc_qref ...')
+    _LOG.info('PV masked; calling Fortran calc_qref')
 
     qref = fortran.lwa_2layer.calc_qref(q1_np, wx=lx, wy=ly)
-    _LOG.info('calc_qref done; calling calc_lwa ...')
+    _LOG.info('calc_qref done; calling calc_lwa')
 
     waa, wac = fortran.lwa_2layer.calc_lwa(q1_np, qref, wx=lx, wy=ly)
     _LOG.info('calc_lwa done')
@@ -153,7 +137,7 @@ def compute_lwa_from_model_pv(
         stem = stem[:-3]
 
     for da, suffix in [(qref_da, 'qref1_2'), (waa_da, 'waa1_2'), (wac_da, 'wac1_2')]:
-        out_path = output_dir / ('%s.%s.nc' % (stem, suffix))
+        out_path = output_directory / ('%s.%s.nc' % (stem, suffix))
         out_path.unlink(missing_ok=True)
         da.to_dataset(name=da.name).to_netcdf(out_path)
         _LOG.info('Wrote %s', out_path)
@@ -165,7 +149,7 @@ def cli(
     input_nc: typing.Annotated[pathlib.Path, typer.Option(
         help='Path to model NetCDF file containing q1 (any resolution)',
     )],
-    output_dir: typing.Annotated[pathlib.Path, typer.Option(
+    output_directory: typing.Annotated[pathlib.Path, typer.Option(
         help='Directory for output files (qref, waa, wac)',
     )],
     lx: typing.Annotated[float, typer.Option(
@@ -181,7 +165,7 @@ def cli(
     """Compute reference PV and (anti)cyclonic LWA from model PV."""
     compute_lwa_from_model_pv(
         input_nc=input_nc,
-        output_dir=output_dir,
+        output_directory=output_directory,
         lx=lx,
         ly=ly,
         max_time=max_time,

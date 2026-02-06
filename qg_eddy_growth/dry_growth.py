@@ -1,18 +1,8 @@
-"""Compute eddy growth rate and mode structure for a 2-layer QG model.
-
-All physical and numerical parameters are configurable via the CLI.
-
-Pipeline:
-    1. Load 3-D model data and compute zonal / time means of wind fields
-    2. Zero out sponge layers at the meridional boundaries
-    3. Sweep wavenumbers, solving the generalized eigenvalue problem at each
-    4. Extract the peak mode structure and save results to NetCDF
-"""
+"""Compute dry eddy growth rates and mode structure for a 2-layer QG model."""
 
 import logging
 import pathlib
 import typing
-from typing import Any
 
 import netCDF4
 import numpy as np
@@ -38,14 +28,13 @@ def compute_growth(
     sponge_min: int,
     sponge_max: int,
 ) -> None:
-    """Sweep wavenumbers and solve the eigenvalue problem at each."""
     with netCDF4.Dataset(str(data_path), 'r') as nc_file:
-        y: numpy.typing.NDArray[np.floating[Any]] = nc_file.variables['y'][:]
-        u1_mean: numpy.typing.NDArray[np.floating[Any]] = np.mean(np.mean(nc_file.variables['u1'][:], axis=2), axis=0)
-        u2_mean: numpy.typing.NDArray[np.floating[Any]] = np.mean(np.mean(nc_file.variables['u2'][:], axis=2), axis=0)
+        y: numpy.typing.NDArray[np.floating[typing.Any]] = nc_file.variables['y'][:]
+        u1_mean: numpy.typing.NDArray[np.floating[typing.Any]] = np.mean(np.mean(nc_file.variables['u1'][:], axis=2), axis=0)
+        u2_mean: numpy.typing.NDArray[np.floating[typing.Any]] = np.mean(np.mean(nc_file.variables['u2'][:], axis=2), axis=0)
 
-    u1: numpy.typing.NDArray[np.floating[Any]] = np.zeros_like(u1_mean)
-    u2: numpy.typing.NDArray[np.floating[Any]] = np.zeros_like(u2_mean)
+    u1: numpy.typing.NDArray[np.floating[typing.Any]] = np.zeros_like(u1_mean)
+    u2: numpy.typing.NDArray[np.floating[typing.Any]] = np.zeros_like(u2_mean)
     u1[sponge_min:sponge_max] = np.copy(u1_mean[sponge_min:sponge_max])
     u2[sponge_min:sponge_max] = np.copy(u2_mean[sponge_min:sponge_max])
 
@@ -54,11 +43,11 @@ def compute_growth(
     n: int = int(len(y))
     half_matrix: int = n - 2
 
-    growth: numpy.typing.NDArray[np.floating[Any]] = np.zeros(resolution)
-    mean_growth: numpy.typing.NDArray[np.floating[Any]] = np.zeros(resolution)
-    kk: numpy.typing.NDArray[np.floating[Any]] = np.zeros(resolution)
+    growth: numpy.typing.NDArray[np.floating[typing.Any]] = np.zeros(resolution)
+    mean_growth: numpy.typing.NDArray[np.floating[typing.Any]] = np.zeros(resolution)
+    kk: numpy.typing.NDArray[np.floating[typing.Any]] = np.zeros(resolution)
 
-    range_k: numpy.typing.NDArray[np.floating[Any]] = np.linspace(0, max_wavenumber, resolution)
+    range_k: numpy.typing.NDArray[np.floating[typing.Any]] = np.linspace(0, max_wavenumber, resolution)
 
     loc: int = 0
     for rk in range_k:
@@ -96,10 +85,10 @@ def compute_growth(
     peak_mode_index: int = int(np.argmax(evals.imag * rk_peak))
     peak_mode_structure = V[:, peak_mode_index]
 
-    peak_mode_structure_upper_img: numpy.typing.NDArray[np.floating[Any]] = np.zeros_like(y)
-    peak_mode_structure_lower_img: numpy.typing.NDArray[np.floating[Any]] = np.zeros_like(y)
-    peak_mode_structure_upper_real: numpy.typing.NDArray[np.floating[Any]] = np.zeros_like(y)
-    peak_mode_structure_lower_real: numpy.typing.NDArray[np.floating[Any]] = np.zeros_like(y)
+    peak_mode_structure_upper_img: numpy.typing.NDArray[np.floating[typing.Any]] = np.zeros_like(y)
+    peak_mode_structure_lower_img: numpy.typing.NDArray[np.floating[typing.Any]] = np.zeros_like(y)
+    peak_mode_structure_upper_real: numpy.typing.NDArray[np.floating[typing.Any]] = np.zeros_like(y)
+    peak_mode_structure_lower_real: numpy.typing.NDArray[np.floating[typing.Any]] = np.zeros_like(y)
 
     peak_mode_structure_upper_img[1:-1] = peak_mode_structure.imag[:half_matrix]
     peak_mode_structure_lower_img[1:-1] = peak_mode_structure.imag[half_matrix:]
