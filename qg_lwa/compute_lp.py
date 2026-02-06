@@ -8,11 +8,13 @@ import netCDF4
 import numpy as np
 import typer
 
-import array_utils
-import lwabudget
+import qg_lwa.array_utils
+import qg_lwa.budget
 
 
 _LOG = logging.getLogger(__name__)
+
+app = typer.Typer(help='Compute the latent heating term of the LWA budget.')
 
 
 def compute_lp(
@@ -39,7 +41,7 @@ def compute_lp(
     y_len = len(ys)
 
     with netCDF4.Dataset(str(data_dir / (base_name + '.qref1_2.nc'))) as ds:
-        Qref = array_utils.ensure_TY(ds.variables['qref1'][:, :].data, y_len=y_len, name='qref1')
+        Qref = qg_lwa.array_utils.ensure_TY(ds.variables['qref1'][:, :].data, y_len=y_len, name='qref1')
     _LOG.info('Variables loaded')
 
     tn = min(max_time, qdat.shape[0], pdat.shape[0], Qref.shape[0])
@@ -50,7 +52,7 @@ def compute_lp(
     dx = xs[1] - xs[0]
     dy = ys[1] - ys[0]
 
-    LP = lwabudget.LH(p=pdat, q=qdat, qref=Qref, L=latent_heating, dx=dx, dy=dy, filt=False)
+    LP = qg_lwa.budget.LH(p=pdat, q=qdat, qref=Qref, L=latent_heating, dx=dx, dy=dy, filt=False)
     _LOG.info('Budget calculated')
 
     sname = 'LP_' + base_name + '.nc'
@@ -75,6 +77,7 @@ def compute_lp(
     _LOG.info('Output saved to %s', out_path)
 
 
+@app.command()
 def cli(
     *,
     data_dir: typing.Annotated[pathlib.Path, typer.Option(help='Directory containing input NetCDF files')],
@@ -83,7 +86,7 @@ def cli(
     latent_heating: typing.Annotated[float, typer.Option(help='Latent heating parameter L')],
     max_time: typing.Annotated[int, typer.Option(help='Maximum number of timesteps to process')] = 10000,
 ) -> None:
-    print('Computing latent heating contribution of the LWA budget...')
+    """Compute the latent heating contribution of the LWA budget."""
     compute_lp(
         data_dir=data_dir,
         output_directory=output_directory,
@@ -91,8 +94,7 @@ def cli(
         latent_heating=latent_heating,
         max_time=max_time,
     )
-    print('Done.')
 
 
 if __name__ == '__main__':
-    typer.run(cli)
+    app()

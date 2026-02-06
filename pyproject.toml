@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "two-layer-qg"
+version = "1.0.0"
+description = "Local Wave Activity budgets and eddy growth rates for 2-layer quasi-geostrophic models"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Giorgio M. Sarro", email = "gmsarro@uchicago.edu"},
+]
+keywords = [
+    "quasi-geostrophic",
+    "local-wave-activity",
+    "eddy-growth",
+    "atmospheric-dynamics",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Typing :: Typed",
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "netCDF4",
+    "xarray",
+    "typer>=0.9",
+]
+
+[project.optional-dependencies]
+dev = ["mypy", "pytest"]
+
+[project.urls]
+Repository = "https://github.com/gmsarro/2-layerQG"
+
+[project.scripts]
+qg-compute-lwa = "qg_lwa.compute_lwa:app"
+qg-compute-uref = "qg_lwa.compute_uref:app"
+qg-compute-budget = "qg_lwa.compute_budget:app"
+qg-compute-lp = "qg_lwa.compute_lp:app"
+qg-compute-growth = "qg_eddy_growth.dry_growth:app"
+
+[tool.setuptools.packages.find]
+include = ["qg_lwa*", "qg_eddy_growth*"]
+
+[tool.setuptools.package-data]
+qg_lwa = ["fortran/*.f90", "py.typed"]
+qg_eddy_growth = ["py.typed"]
+
+[tool.mypy]
+strict = true
+warn_return_any = true
+warn_unused_configs = true

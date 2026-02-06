@@ -3,41 +3,62 @@
 import logging
 import pathlib
 import typing
+from typing import Any
 
 import netCDF4
 import numpy as np
+import numpy.typing as npt
 import typer
 
-import array_utils
+import qg_lwa.array_utils
+
+NDArrayF = npt.NDArray[np.floating[Any]]
 
 
 _LOG = logging.getLogger(__name__)
 
+app = typer.Typer(help='Compute reference wind and temperature from Q_ref.')
+
 
 def solve_uref(
     *,
-    qref: np.ndarray,
-    um: np.ndarray,
-    umb: np.ndarray,
-    ys: np.ndarray,
+    qref: NDArrayF,
+    um: NDArrayF,
+    umb: NDArrayF,
+    ys: NDArrayF,
     beta: float,
     Ld: float,
     maxerr: float = 1e-6,
     max_iterations: int = 10000,
     relax: float = 1.9,
-) -> np.ndarray:
+) -> NDArrayF:
     """Solve SOR for U_REF given Q_REF gradient and boundary conditions.
 
-    :param qref: Reference PV (time, latitude)
-    :param um: Zonal-mean U (upper) for initial guess and boundary
-    :param umb: Zonal-mean U (lower) used in forcing term
-    :param ys: Latitude coordinate (monotonic, evenly spaced)
-    :param beta: Nondimensional beta parameter
-    :param Ld: Deformation radius
-    :param maxerr: Convergence tolerance
-    :param max_iterations: Maximum iterations
-    :param relax: Relaxation factor for SOR
-    :return: Computed U_REF (time, latitude)
+    Parameters
+    ----------
+    qref : array (time, latitude)
+        Reference PV.
+    um : array (time, latitude)
+        Zonal-mean U (upper) for initial guess and boundary.
+    umb : array (time, latitude)
+        Zonal-mean U (lower) used in forcing term.
+    ys : array (latitude,)
+        Latitude coordinate (monotonic, evenly spaced).
+    beta : float
+        Nondimensional beta parameter.
+    Ld : float
+        Deformation radius.
+    maxerr : float
+        Convergence tolerance.
+    max_iterations : int
+        Maximum SOR iterations.
+    relax : float
+        Relaxation factor.
+
+    Returns
+    -------
+    array (time, latitude)
+        Computed U_REF.
     """
     tn, yn = np.shape(qref)
     dy = ys[1] - ys[0]
@@ -65,16 +86,25 @@ def solve_uref(
 
 def integrate_tref(
     *,
-    uref: np.ndarray,
-    ys: np.ndarray,
-    tm: np.ndarray,
-) -> np.ndarray:
+    uref: NDArrayF,
+    ys: NDArrayF,
+    tm: NDArrayF,
+) -> NDArrayF:
     """Integrate for T_REF from U_REF shear and adjust mean to match boundary template.
 
-    :param uref: Reference zonal wind (time, latitude)
-    :param ys: Latitude coordinate (used for spacing)
-    :param tm: Zonal-mean temperature (time, latitude) used for offset constraint
-    :return: Reference temperature (time, latitude)
+    Parameters
+    ----------
+    uref : array (time, latitude)
+        Reference zonal wind.
+    ys : array (latitude,)
+        Latitude coordinate.
+    tm : array (time, latitude)
+        Zonal-mean temperature used for offset constraint.
+
+    Returns
+    -------
+    array (time, latitude)
+        Reference temperature.
     """
     tn, yn = np.shape(uref)
     dy = ys[1] - ys[0]
@@ -111,7 +141,7 @@ def compute_and_save(
 
     with netCDF4.Dataset(str(qref_path)) as ds_qref:
         qref_raw = ds_qref.variables['qref1'][:, :].data
-    qref = array_utils.ensure_TY(qref_raw, y_len=yn, name='qref1')
+    qref = qg_lwa.array_utils.ensure_TY(qref_raw, y_len=yn, name='qref1')
 
     tn = min(max_time, qref.shape[0], um.shape[0], umb.shape[0], tm.shape[0])
     qref = qref[:tn, :]
@@ -150,6 +180,7 @@ def compute_and_save(
     _LOG.info('Saved %s', out_t)
 
 
+@app.command()
 def cli(
     *,
     data_dir: typing.Annotated[pathlib.Path, typer.Option(help='Input directory containing qref and mean fields')],
@@ -159,7 +190,7 @@ def cli(
     ld: typing.Annotated[float, typer.Option(help='Deformation radius')] = 1.0,
     max_time: typing.Annotated[int, typer.Option(help='Maximum number of timesteps to process')] = 10000,
 ) -> None:
-    print('Computing U_REF and T_REF...')
+    """Compute reference wind (U_ref) and temperature (T_ref) from Q_ref."""
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -173,8 +204,7 @@ def cli(
         Ld=ld,
         max_time=max_time,
     )
-    print('Done.')
 
 
 if __name__ == '__main__':
-    typer.run(cli)
+    app()

@@ -5,15 +5,20 @@ than the expected (T, Y) or (T, Y, X).  These helpers detect the layout
 and transpose when necessary.
 """
 
+from typing import Any
+
 import numpy as np
+import numpy.typing as npt
+
+NDArrayF = npt.NDArray[np.floating[Any]]
 
 
 def ensure_TY(
-    arr: np.ndarray,
+    arr: NDArrayF,
     *,
     y_len: int,
     name: str = '',
-) -> np.ndarray:
+) -> NDArrayF:
     """Return *arr* as (time, y).  Accepts (T, Y) or (Y, T)."""
     if arr.ndim != 2:
         raise ValueError('%s must be 2-D, got %d-D with shape %s' % (name, arr.ndim, arr.shape))
@@ -26,12 +31,12 @@ def ensure_TY(
 
 
 def ensure_TYX(
-    arr: np.ndarray,
+    arr: NDArrayF,
     *,
     y_len: int,
     x_len: int,
     name: str = '',
-) -> np.ndarray:
+) -> NDArrayF:
     """Return *arr* as (time, y, x).  Handles common permutations."""
     if arr.ndim != 3:
         raise ValueError('%s must be 3-D, got %d-D with shape %s' % (name, arr.ndim, arr.shape))

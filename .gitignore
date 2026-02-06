@@ -4,3 +4,8 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+*.so
+*.o
+*.x
+verify_refactoring.py
+.venv/

@@ -1,4 +1,4 @@
-"""Compute all terms of the LWA budget (excluding latent heating contribution) and save to NetCDF."""
+"""Compute all terms of the LWA budget (excluding latent heating) and save to NetCDF."""
 
 import logging
 import pathlib
@@ -8,11 +8,13 @@ import netCDF4
 import numpy as np
 import typer
 
-import array_utils
-import lwabudget
+import qg_lwa.array_utils
+import qg_lwa.budget
 
 
 _LOG = logging.getLogger(__name__)
+
+app = typer.Typer(help='Compute the full LWA budget (all terms except latent heating).')
 
 
 def compute_budget(
@@ -42,15 +44,15 @@ def compute_budget(
     x_len = len(xs)
 
     with netCDF4.Dataset(str(data_dir / (base_name + '.qref1_2.nc'))) as ds:
-        Qref = array_utils.ensure_TY(ds.variables['qref1'][:, :].data, y_len=y_len, name='qref1')
+        Qref = qg_lwa.array_utils.ensure_TY(ds.variables['qref1'][:, :].data, y_len=y_len, name='qref1')
     with netCDF4.Dataset(str(data_dir / (base_name + '.uref1_2.nc'))) as ds:
-        Uref = array_utils.ensure_TY(ds.variables['uref1'][:, :].data, y_len=y_len, name='uref1')
+        Uref = qg_lwa.array_utils.ensure_TY(ds.variables['uref1'][:, :].data, y_len=y_len, name='uref1')
     with netCDF4.Dataset(str(data_dir / (base_name + '.tref1_2.nc'))) as ds:
-        Tref = array_utils.ensure_TY(ds.variables['tref1'][:, :].data, y_len=y_len, name='tref1')
+        Tref = qg_lwa.array_utils.ensure_TY(ds.variables['tref1'][:, :].data, y_len=y_len, name='tref1')
     with netCDF4.Dataset(str(data_dir / (base_name + '.wac1_2.nc'))) as ds:
-        LWAC = array_utils.ensure_TYX(ds.variables['wac1'][:, :, :].data, y_len=y_len, x_len=x_len, name='wac1')
+        LWAC = qg_lwa.array_utils.ensure_TYX(ds.variables['wac1'][:, :, :].data, y_len=y_len, x_len=x_len, name='wac1')
     with netCDF4.Dataset(str(data_dir / (base_name + '.waa1_2.nc'))) as ds:
-        LWAA = array_utils.ensure_TYX(ds.variables['waa1'][:, :, :].data, y_len=y_len, x_len=x_len, name='waa1')
+        LWAA = qg_lwa.array_utils.ensure_TYX(ds.variables['waa1'][:, :, :].data, y_len=y_len, x_len=x_len, name='waa1')
 
     LWA = LWAA + LWAC
     _LOG.info('Variables loaded')
@@ -80,13 +82,13 @@ def compute_budget(
     dx = xs[1] - xs[0]
     dy = ys[1] - ys[0]
 
-    LWAtend = lwabudget.lwatend(lwa=LWA, dt=dt)
-    Urefadv = lwabudget.urefadv(lwa=LWA, uref=Uref, dx=dx, filt=False)
-    ueqeadv = lwabudget.ueadv(q=qdat, qref=Qref, u=udat, uref=Uref, dx=dx, dy=dy, filt=False)
-    EF_x = lwabudget.eddyflux_x(ue=ue, ve=ve, dx=dx, filt=False)
-    EF_y = lwabudget.eddyflux_y(ue=ue, ve=ve, dy=dy, filt=False)
-    EF_z = lwabudget.eddyflux_z(ve=ve, te=te, Ld=Ld, filt=False)
-    EF = lwabudget.eddyflux(ve=ve, qe=qe, filt=False)
+    LWAtend = qg_lwa.budget.lwatend(lwa=LWA, dt=dt)
+    Urefadv = qg_lwa.budget.urefadv(lwa=LWA, uref=Uref, dx=dx, filt=False)
+    ueqeadv = qg_lwa.budget.ueadv(q=qdat, qref=Qref, u=udat, uref=Uref, dx=dx, dy=dy, filt=False)
+    EF_x = qg_lwa.budget.eddyflux_x(ue=ue, ve=ve, dx=dx, filt=False)
+    EF_y = qg_lwa.budget.eddyflux_y(ue=ue, ve=ve, dy=dy, filt=False)
+    EF_z = qg_lwa.budget.eddyflux_z(ve=ve, te=te, Ld=Ld, filt=False)
+    EF = qg_lwa.budget.eddyflux(ve=ve, qe=qe, filt=False)
 
     RHS = Urefadv + ueqeadv + EF_x + EF_y + EF_z
     RES = LWAtend - RHS
@@ -128,6 +130,7 @@ def compute_budget(
     _LOG.info('Output saved to %s', out_path)
 
 
+@app.command()
 def cli(
     *,
     data_dir: typing.Annotated[pathlib.Path, typer.Option(help='Directory containing input NetCDF files')],
@@ -136,7 +139,7 @@ def cli(
     max_time: typing.Annotated[int, typer.Option(help='Maximum number of timesteps to process')] = 10000,
     ld: typing.Annotated[float, typer.Option(help='Deformation radius')] = 1.0,
 ) -> None:
-    print('Computing LWA budget terms...')
+    """Compute the full LWA budget (all terms except latent heating)."""
     compute_budget(
         data_dir=data_dir,
         output_directory=output_directory,
@@ -144,8 +147,7 @@ def cli(
         max_time=max_time,
         Ld=ld,
     )
-    print('Done.')
 
 
 if __name__ == '__main__':
-    typer.run(cli)
+    app()
