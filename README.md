@@ -74,7 +74,7 @@ qg-compute-growth \
   --data-path /path/to/model.3d.nc \
   --output-file /path/to/growth_rates.nc \
   --beta 0.2 --resolution 600 --max-wavenumber 3.0 \
-  --sponge-min 11 --sponge-max -12
+  --sponge-min 31 --sponge-max -32
 ```
 
 **Moist growth** (Python API):
@@ -119,7 +119,7 @@ All physical and numerical parameters are exposed as CLI options:
 | Max timesteps | `--max-time` | all | all LWA scripts |
 | Wavenumber resolution | `--resolution` | 600 | `qg-compute-growth` |
 | Max wavenumber | `--max-wavenumber` | 3.0 | `qg-compute-growth` |
-| Sponge layer bounds | `--sponge-min/max` | 11 / -12 | `qg-compute-growth` |
+| Sponge layer bounds | `--sponge-min/max` | 31 / -32 | `qg-compute-growth` |
 
 ## Repository Structure
 

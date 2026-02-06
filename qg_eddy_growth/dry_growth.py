@@ -140,10 +140,10 @@ def cli(
     )] = 3.0,
     sponge_min: typing.Annotated[int, typer.Option(
         help='Index of inner boundary of lower sponge layer',
-    )] = 11,
+    )] = 31,
     sponge_max: typing.Annotated[int, typer.Option(
         help='Index of inner boundary of upper sponge layer (negative = from end)',
-    )] = -12,
+    )] = -32,
 ) -> None:
     """Compute dry eddy growth rates and peak mode structure."""
     logging.basicConfig(
