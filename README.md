@@ -4,7 +4,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![Typed](https://img.shields.io/badge/typed-mypy--strict-blue.svg)](https://mypy-lang.org/)
 
-Compute **Local Wave Activity (LWA) budgets** and **eddy growth rates** for 2-layer quasi-geostrophic channel models. Associated with the methods described in [Sarro et al. (2025)](#citation).
+Compute **Local Wave Activity (LWA) budgets** and **eddy growth rates** for 2-layer quasi-geostrophic channel models. Associated with the methods described in [Sarro et al. (2026)](#citation).
 
 ## Installation
 
