@@ -146,8 +146,6 @@ All physical and numerical parameters are exposed as CLI options:
 ├── notebooks/                  # Example Jupyter notebooks
 │   ├── plot_eddy_growth.ipynb
 │   └── plot_moist_growth.ipynb
-├── tests/
-│   └── test_verify.py          # Numerical verification against original code
 ├── README.md
 ├── LICENSE
 └── .gitignore
